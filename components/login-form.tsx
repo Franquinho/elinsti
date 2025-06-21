@@ -23,9 +23,15 @@ export function LoginForm() {
     setLoading(true)
     setError("")
 
-    const success = await login(email, password)
-    if (!success) {
-      setError("Credenciales incorrectas")
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await res.json()
+
+    if (!data.success) {
+      setError("Credenciales incorrectas" + (data.message ? `: ${data.message}` : "" ))
     }
     setLoading(false)
   }

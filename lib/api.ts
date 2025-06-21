@@ -1,10 +1,10 @@
 "use client"
 
-// Configuración para producción en Ferozo
+// Base para API Routes de Next.js
 const API_BASE_URL: string =
   (typeof window !== "undefined" && (window as any).API_BASE_URL) ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "/api/productos/list" // ✅ URL real de Ferozo
+  "/api"
 
 class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {
@@ -19,10 +19,7 @@ class ApiClient {
 
     try {
       const res = await fetch(url, cfg)
-
       const contentType = res.headers.get("content-type") || ""
-
-      // Si la respuesta no es JSON devolvemos el texto para inspección
       const data = contentType.includes("application/json")
         ? await res.json()
         : { success: false, raw: await res.text() }
@@ -48,31 +45,26 @@ class ApiClient {
 
   // Productos
   async getProductos() {
-    return this.request("productos/list.php")
+    return this.request("productos/list")
   }
 
   // Comandas
   async createComanda(comandaData: any) {
-    return this.request("comandas/create.php", {
+    return this.request("comandas/create", {
       method: "POST",
       body: JSON.stringify(comandaData),
     })
   }
 
   async getComandas() {
-    return this.request("comandas/list.php")
+    return this.request("comandas/list")
   }
 
   async updateComandaStatus(comanda_id: number, estado: string, metodo_pago?: string, nota?: string) {
-    return this.request("comandas/update-status.php", {
+    return this.request("comandas/update-status", {
       method: "POST",
       body: JSON.stringify({ comanda_id, estado, metodo_pago, nota }),
     })
-  }
-
-  // Test de conexión
-  async testConnection() {
-    return this.request("test-connection.php")
   }
 }
 
