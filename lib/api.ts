@@ -4,7 +4,7 @@
 const API_BASE_URL: string =
   (typeof window !== "undefined" && (window as any).API_BASE_URL) ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "https://elinsti.hanemann.ar/api" // ✅ URL real de Ferozo
+  "/api/productos/list" // ✅ URL real de Ferozo
 
 class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {
