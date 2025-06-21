@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     .eq("id", data.comanda_id);
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Error..." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

@@ -9,7 +9,7 @@ export async function GET() {
     .order("nombre");
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Error..." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, productos: data });

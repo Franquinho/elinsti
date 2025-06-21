@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     .single();
 
   if (errorComanda) {
-    return NextResponse.json({ success: false, error: errorComanda.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Error..." }, { status: 500 });
   }
 
   // Inserta los productos de la comanda

@@ -16,7 +16,7 @@ export async function GET() {
     .limit(100);
 
   if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Error..." }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, comandas: data });
