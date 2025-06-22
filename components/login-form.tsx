@@ -23,7 +23,21 @@ export function LoginForm() {
     setError("")
 
     try {
-      const data = await apiClient.login(email, password)
+      console.log("🔎 Enviando login a:", "/api/auth/login", "con método POST");
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      console.log("🔎 Status de respuesta:", res.status, res.statusText);
+      let data;
+      try {
+        data = await res.json();
+        console.log("🔎 Respuesta JSON:", data);
+      } catch {
+        console.warn("⚠️ La respuesta no es JSON o está vacía");
+        data = { success: false, message: "Respuesta inesperada del servidor" };
+      }
 
       if (!data.success) {
         setError("Credenciales incorrectas" + (data.message ? `: ${data.message}` : "" ))
