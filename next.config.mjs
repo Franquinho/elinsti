@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  trailingSlash: true,
+  // output: 'export', // ← Comentado para permitir API Routes
+  trailingSlash: false,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -11,7 +11,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Configuración para Ferozo
   assetPrefix: '',
   basePath: '',
 }
