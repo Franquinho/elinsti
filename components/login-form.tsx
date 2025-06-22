@@ -22,29 +22,8 @@ export function LoginForm() {
     setLoading(true)
     setError("")
 
-    // Construir la URL y loguear si tiene barra de más
-    let endpoint = "/api/auth/login"
-    if (endpoint.endsWith("/")) {
-      console.warn("⚠️ La URL de login tiene una barra final innecesaria:", endpoint)
-      endpoint = endpoint.replace(/\/+$/, "")
-    }
-    console.log("🔎 Enviando login a:", endpoint, "con método POST")
-
     try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      })
-      console.log("🔎 Status de respuesta:", res.status, res.statusText)
-      let data
-      try {
-        data = await res.json()
-        console.log("🔎 Respuesta JSON:", data)
-      } catch {
-        console.warn("⚠️ La respuesta no es JSON o está vacía")
-        data = { success: false, message: "Respuesta inesperada del servidor" }
-      }
+      const data = await apiClient.login(email, password)
       if (!data.success) {
         setError("Credenciales incorrectas" + (data.message ? `: ${data.message}` : ""))
       }
