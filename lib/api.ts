@@ -1,10 +1,7 @@
 "use client"
 
 // Base para API Routes de Next.js
-const API_BASE_URL: string =
-  (typeof window !== "undefined" && (window as any).API_BASE_URL) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "/api"
+const API_BASE_URL = "/api"
 
 class ApiClient {
   private async request(endpoint: string, options: RequestInit = {}) {

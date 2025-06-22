@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useAuth } from "@/lib/auth"
+import { apiClient } from "@/lib/api"
 import { AlertCircle } from "lucide-react"
 import Image from "next/image"
 
@@ -16,22 +16,21 @@ export function LoginForm() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-    const data = await res.json()
+    try {
+      const data = await apiClient.login(email, password)
 
-    if (!data.success) {
-      setError("Credenciales incorrectas" + (data.message ? `: ${data.message}` : "" ))
+      if (!data.success) {
+        setError("Credenciales incorrectas" + (data.message ? `: ${data.message}` : "" ))
+      }
+      // Aquí puedes manejar el login exitoso (redirección, guardar usuario, etc.)
+    } catch (err) {
+      setError("Error de red o servidor")
     }
     setLoading(false)
   }
