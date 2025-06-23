@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { X, CheckCircle, AlertCircle, Info, Music } from "lucide-react"
@@ -93,7 +93,7 @@ export function NotificationSystem({ notifications, onRemove }: NotificationSyst
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
 
-  const addNotification = (notification: Omit<Notification, "id">) => {
+  const addNotification = useCallback((notification: Omit<Notification, "id">) => {
     const id = Date.now().toString()
     setNotifications((prev) => [
       ...prev,
@@ -103,11 +103,11 @@ export function useNotifications() {
         duration: notification.duration || 5000,
       },
     ])
-  }
+  }, [])
 
-  const removeNotification = (id: string) => {
+  const removeNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id))
-  }
+  }, [])
 
   return {
     notifications,
