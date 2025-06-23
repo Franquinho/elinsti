@@ -1,21 +1,50 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(request: Request) {
-  const data = await request.json();
+  try {
+    const { comanda_id, estado, metodo_pago, nota } = await request.json();
 
-  const { error } = await supabase
-    .from("comandas")
-    .update({
-      estado: data.estado,
-      metodo_pago: data.metodo_pago ?? null,
-      nota: data.nota ?? null
-    })
-    .eq("id", data.comanda_id);
+    // Validar datos requeridos
+    if (!comanda_id || !estado) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "ID de comanda y estado son requeridos" 
+      }, { status: 400 });
+    }
 
-  if (error) {
-    return NextResponse.json({ success: false, message: "Error..." }, { status: 500 });
+    // Actualizar la comanda
+    const { data, error } = await supabaseAdmin
+      .from('comandas')
+      .update({
+        estado,
+        metodo_pago: metodo_pago || null,
+        nota: nota || null,
+        fecha_actualizacion: new Date().toISOString()
+      })
+      .eq('id', comanda_id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error actualizando comanda:", error);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al actualizar comanda" 
+      }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      comanda: data,
+      message: "Estado actualizado exitosamente" 
+    });
+
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: "Error interno del servidor" 
+    }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true });
 }

@@ -1,43 +1,74 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(request: Request) {
-  const data = await request.json();
+  try {
+    const { usuario_id, evento_id, total, nombre_cliente, productos } = await request.json();
 
-  // Inserta la comanda principal
-  const { data: comanda, error: errorComanda } = await supabase
-    .from("comandas")
-    .insert([{
-      usuario_id: data.usuario_id,
-      nombre_cliente: data.nombre_cliente,
-      total: data.total,
-      estado: "pendiente",
-      metodo_pago: data.metodo_pago ?? null,
-      nota: data.nota ?? null
-    }])
-    .select()
-    .single();
+    // Validar datos requeridos
+    if (!usuario_id || !evento_id || !total || !nombre_cliente || !productos || productos.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Datos incompletos" 
+      }, { status: 400 });
+    }
 
-  if (errorComanda) {
-    return NextResponse.json({ success: false, message: "Error..." }, { status: 500 });
+    // Crear la comanda
+    const { data: comanda, error: comandaError } = await supabaseAdmin
+      .from('comandas')
+      .insert({
+        usuario_id,
+        evento_id,
+        total,
+        nombre_cliente,
+        estado: 'pendiente',
+        fecha_creacion: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (comandaError) {
+      console.error("Error creando comanda:", comandaError);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al crear comanda" 
+      }, { status: 500 });
+    }
+
+    // Crear los items de la comanda
+    const itemsComanda = productos.map((producto: any) => ({
+      comanda_id: comanda.id,
+      producto_id: producto.id,
+      cantidad: producto.cantidad,
+      precio_unitario: producto.precio,
+      subtotal: producto.precio * producto.cantidad
+    }));
+
+    const { error: itemsError } = await supabaseAdmin
+      .from('comanda_items')
+      .insert(itemsComanda);
+
+    if (itemsError) {
+      console.error("Error creando items:", itemsError);
+      // Intentar eliminar la comanda si fallan los items
+      await supabaseAdmin.from('comandas').delete().eq('id', comanda.id);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al crear items de comanda" 
+      }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      comanda_id: comanda.id,
+      message: "Comanda creada exitosamente" 
+    });
+
+  } catch (error) {
+    console.error("Error inesperado:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: "Error interno del servidor" 
+    }, { status: 500 });
   }
-
-  // Inserta los productos de la comanda
-  const detalles = data.productos.map((p: any) => ({
-    comanda_id: comanda.id,
-    producto_id: p.id,
-    cantidad: p.cantidad,
-    precio_unitario: p.precio,
-    subtotal: p.cantidad * p.precio
-  }));
-
-  const { error: errorDetalle } = await supabase
-    .from("comanda_detalle")
-    .insert(detalles);
-
-  if (errorDetalle) {
-    return NextResponse.json({ success: false, error: errorDetalle.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true, comanda_id: comanda.id });
 }
