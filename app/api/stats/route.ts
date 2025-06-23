@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const { data: comandas, error } = await supabaseAdmin
       .from('comandas')
-      .select('created_at, total, estado, metodo_pago, productos:detalles_comanda(cantidad)');
+      .select('created_at, total, estado, metodo_pago, productos:comanda_items(cantidad)');
 
     if (error) throw error;
     if (!comandas) {
