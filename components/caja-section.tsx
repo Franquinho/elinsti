@@ -31,7 +31,7 @@ interface Comanda {
   estado: "pendiente" | "pagado" | "cancelado"
   metodo_pago?: string
   nota?: string
-  created_at: string
+  fecha_creacion: string
   usuario?: { nombre: string }
 }
 
@@ -100,7 +100,8 @@ export function CajaSection() {
       const response = await apiClient.updateComandaStatus(comanda.id, "pagado", metodo, nota)
 
       if (response.success) {
-        setComandas(comandas.map((c) => (c.id === comanda.id ? response.comanda : c)))
+        const comandaActualizada = { ...comanda, ...response.comanda }
+        setComandas(comandas.map((c) => (c.id === comanda.id ? comandaActualizada : c)))
         setSelectedComanda(null)
         setMetodoPago("")
         setNota("")
@@ -225,7 +226,10 @@ export function CajaSection() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
                       <Badge className={getEstadoColor(comanda.estado)}>{comanda.estado.toUpperCase()}</Badge>
-                      <span className="text-sm text-gray-600">Comanda #{comanda.id} - Vendedor 1</span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(comanda.fecha_creacion).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                      </span>
+                      <span className="text-sm text-gray-600">Comanda #{comanda.id}</span>
                       {comanda.nombre_cliente && (
                         <span className="text-sm font-medium text-pink-600 bg-pink-50 px-2 py-1 rounded">
                           👤 {comanda.nombre_cliente}
@@ -254,7 +258,7 @@ export function CajaSection() {
 
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-lg text-amber-800">Total: ${comanda.total.toLocaleString()}</span>
-                      <span className="text-sm text-gray-500">{new Date(comanda.created_at).toLocaleTimeString()}</span>
+                      <span className="text-sm text-gray-500">{new Date(comanda.fecha_creacion).toLocaleTimeString()}</span>
                     </div>
 
                     {comanda.nota && (

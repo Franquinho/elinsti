@@ -15,7 +15,7 @@ interface Comanda {
     }
   }>
   total: number
-  created_at: string
+  fecha_creacion: string
 }
 
 interface PrintComandaProps {
@@ -29,7 +29,7 @@ export const PrintComanda = forwardRef<HTMLDivElement, PrintComandaProps>(({ com
     <div ref={ref} className="p-4 bg-white text-black font-mono text-xs hidden print:block">
       <h2 className="text-center font-bold text-lg mb-2">EL INSTI</h2>
       <p className="text-center text-xs">Comanda #{comanda.id}</p>
-      <p className="text-center text-xs">{new Date(comanda.created_at).toLocaleString()}</p>
+      <p className="text-center text-xs">{new Date(comanda.fecha_creacion).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}</p>
       {comanda.nombre_cliente && <p className="mt-2">Cliente: {comanda.nombre_cliente}</p>}
       <hr className="border-t border-dashed border-black my-2" />
       <table className="w-full">
