@@ -13,6 +13,7 @@ import { CreditCard, X, Check } from "lucide-react"
 import { localDB } from "@/lib/database"
 import { PrintComanda } from "@/components/print-comanda"
 import { useNotifications, NotificationSystem } from "@/components/notification-system"
+import { apiClient } from "@/lib/api"
 
 interface Comanda {
   id: number
@@ -33,6 +34,7 @@ interface Comanda {
 
 export function CajaSection() {
   const [comandas, setComandas] = useState<Comanda[]>([])
+  const [loading, setLoading] = useState(true)
   const [cajaAbierta, setCajaAbierta] = useState(true)
   const [montoInicial, setMontoInicial] = useState(0)
   const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null)
@@ -43,21 +45,24 @@ export function CajaSection() {
 
   useEffect(() => {
     const cargarComandas = async () => {
+      setLoading(true)
       try {
-        const comandasDB = await localDB.getAll("comandas")
-        // Agregar nombre de usuario simulado
-        const comandasConUsuario = comandasDB.map((comanda) => ({
-          ...comanda,
-          usuario_nombre: "Vendedor 1", // Simulado
-        }))
-        setComandas(comandasConUsuario)
+        const response = await apiClient.getComandas()
+        if (response.success) {
+          setComandas(response.comandas)
+        } else {
+          addNotification({ type: 'error', title: 'Error', message: 'No se pudieron cargar las comandas.' })
+        }
       } catch (error) {
         console.error("Error cargando comandas:", error)
+        addNotification({ type: 'error', title: 'Error de Red', message: 'No se pudieron cargar las comandas.' })
+      } finally {
+        setLoading(false)
       }
     }
 
     cargarComandas()
-  }, [])
+  }, [addNotification])
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -89,34 +94,27 @@ export function CajaSection() {
 
   const procesarPago = async (comanda: Comanda, metodo: string, nota?: string) => {
     try {
-      const comandaActualizada = {
-        ...comanda,
-        estado: "pagado" as const,
-        metodo_pago: metodo,
-        nota,
-        updated_at: new Date().toISOString(),
+      const response = await apiClient.updateComandaStatus(comanda.id, "pagado", metodo, nota)
+
+      if (response.success) {
+        setComandas(comandas.map((c) => (c.id === comanda.id ? response.comanda : c)))
+        setSelectedComanda(null)
+        setMetodoPago("")
+        setNota("")
+        addNotification({
+          type: "music",
+          title: "¡Pago Procesado!",
+          message: `Comanda #${comanda.id} pagada exitosamente`,
+        })
+      } else {
+        throw new Error("No se pudo procesar el pago")
       }
-
-      await localDB.update("comandas", comandaActualizada)
-
-      setComandas(comandas.map((c) => (c.id === comanda.id ? comandaActualizada : c)))
-      setSelectedComanda(null)
-      setMetodoPago("")
-      setNota("")
-
-      addNotification({
-        type: "music",
-        title: "¡Pago Procesado!",
-        message: `Comanda #${comanda.id} - ${comanda.nombre_cliente || "Cliente"} pagada exitosamente`,
-        duration: 4000,
-      })
     } catch (error) {
       console.error("Error procesando pago:", error)
       addNotification({
         type: "error",
         title: "Error",
         message: "No se pudo procesar el pago",
-        duration: 3000,
       })
     }
   }
