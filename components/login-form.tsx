@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { apiClient } from "@/lib/api"
 import { AlertCircle } from "lucide-react"
 import Image from "next/image"
+import { useAuth } from "@/lib/auth"
 
 export function LoginForm() {
+  const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -23,15 +24,17 @@ export function LoginForm() {
     setError("")
 
     try {
-      const data = await apiClient.login(email, password)
-      if (!data.success) {
-        setError("Credenciales incorrectas" + (data.message ? `: ${data.message}` : ""))
+      const success = await login(email, password)
+
+      if (!success) {
+        setError("Credenciales incorrectas o error en el servidor.")
       }
-      // Aquí puedes manejar el login exitoso (redirección, guardar usuario, etc.)
-    } catch (err) {
-      setError("Error de red o servidor")
+      // Si es exitoso, el AuthProvider se encargará de redirigir y cambiar la vista.
+    } catch (err: any) {
+      setError(err.message || "Error de red o servidor")
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
