@@ -1,14 +1,46 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Verificar que las variables de entorno estén configuradas
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Función para validar configuración
+function validateSupabaseConfig() {
+  if (!supabaseUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL no está configurada. " +
+      "Crea un archivo .env.local con tus credenciales de Supabase."
+    );
+  }
+  if (!supabaseAnonKey) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY no está configurada. " +
+      "Crea un archivo .env.local con tus credenciales de Supabase."
+    );
+  }
+  if (!supabaseServiceKey) {
+    console.warn(
+      "SUPABASE_SERVICE_ROLE_KEY no está configurada. " +
+      "Algunas funcionalidades del servidor pueden no funcionar correctamente."
+    );
+  }
+}
+
+// Validar configuración solo en el servidor
+if (typeof window === 'undefined') {
+  validateSupabaseConfig();
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+);
 
 // Cliente con permisos de servicio para operaciones del servidor
 export const supabaseAdmin = createClient(
-  supabaseUrl,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseServiceKey || supabaseAnonKey || 'placeholder-key'
 );
 
 export type Database = {

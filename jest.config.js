@@ -7,16 +7,14 @@ const createJestConfig = nextJest({
 
 // Agrega cualquier configuración personalizada de Jest que desees
 const customJestConfig = {
+  setupFiles: ['dotenv/config'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
+  testPathIgnorePatterns: ['<rootDir>/__tests__/mocks/'],
   moduleNameMapper: {
     // Manejar alias de módulo (esto se debe ajustar a tu tsconfig.json)
     '^@/(.*)$': '<rootDir>/$1',
   },
-  testPathIgnorePatterns: [
-    '<rootDir>/node_modules/', 
-    '<rootDir>/.next/'
-  ],
 }
 
 // createJestConfig se exporta de esta manera para asegurar que next/jest pueda cargar la configuración de Next.js

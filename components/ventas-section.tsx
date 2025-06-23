@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Plus, Minus, ShoppingCart, Music2, Disc3 } from "lucide-react"
+import { Plus, Minus, ShoppingCart, Music2, Disc3, RefreshCw } from "lucide-react"
 import { useAuth } from "@/lib/auth"
 import { apiClient } from "@/lib/api"
 import { useNotifications } from "@/components/notification-system"
+import { useComandasSync } from "@/hooks/use-comandas-sync"
 
 interface Producto {
   id: number
@@ -29,6 +30,7 @@ interface ProductoComanda {
 export function VentasSection() {
   const { user } = useAuth()
   const { addNotification } = useNotifications()
+  const { comandas, refreshComandas } = useComandasSync(5000) // Sincronizar cada 5 segundos
   const [productos, setProductos] = useState<Producto[]>([])
   const [comanda, setComanda] = useState<ProductoComanda[]>([])
   const [nombreCliente, setNombreCliente] = useState("")
@@ -128,6 +130,9 @@ export function VentasSection() {
         // Limpiar formulario
         setComanda([])
         setNombreCliente("")
+        
+        // Refrescar comandas para sincronizar con Caja
+        await refreshComandas()
 
         addNotification({
           type: "music",

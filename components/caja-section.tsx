@@ -9,11 +9,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { CreditCard, X, Check } from "lucide-react"
+import { CreditCard, X, Check, RefreshCw, Clock } from "lucide-react"
 import { localDB } from "@/lib/database"
 import { PrintComanda } from "@/components/print-comanda"
 import { useNotifications, NotificationSystem } from "@/components/notification-system"
 import { apiClient } from "@/lib/api"
+import { useComandasSync } from "@/hooks/use-comandas-sync"
 
 interface Comanda {
   id: number
@@ -36,8 +37,7 @@ interface Comanda {
 }
 
 export function CajaSection() {
-  const [comandas, setComandas] = useState<Comanda[]>([])
-  const [loading, setLoading] = useState(true)
+  const { comandas, loading, error, refreshComandas, lastUpdate } = useComandasSync(3000) // Sincronizar cada 3 segundos
   const [cajaAbierta, setCajaAbierta] = useState(true)
   const [montoInicial, setMontoInicial] = useState(0)
   const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null)
@@ -45,27 +45,6 @@ export function CajaSection() {
   const [nota, setNota] = useState("")
 
   const { notifications, addNotification, removeNotification } = useNotifications()
-
-  useEffect(() => {
-    const cargarComandas = async () => {
-      setLoading(true)
-      try {
-        const response = await apiClient.getComandas()
-        if (response.success) {
-          setComandas(response.comandas)
-        } else {
-          addNotification({ type: 'error', title: 'Error', message: 'No se pudieron cargar las comandas.' })
-        }
-      } catch (error) {
-        console.error("Error cargando comandas:", error)
-        addNotification({ type: 'error', title: 'Error de Red', message: 'No se pudieron cargar las comandas.' })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    cargarComandas()
-  }, [addNotification])
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {
@@ -100,11 +79,10 @@ export function CajaSection() {
       const response = await apiClient.updateComandaStatus(comanda.id, "pagado", metodo, nota)
 
       if (response.success) {
-        const comandaActualizada = { ...comanda, ...response.comanda }
-        setComandas(comandas.map((c) => (c.id === comanda.id ? comandaActualizada : c)))
         setSelectedComanda(null)
         setMetodoPago("")
         setNota("")
+        await refreshComandas() // Refrescar comandas después del pago
         addNotification({
           type: "music",
           title: "¡Pago Procesado!",
@@ -130,24 +108,26 @@ export function CajaSection() {
       )
     ) {
       try {
-        const comandaActualizada = {
-          ...comanda,
-          estado: "cancelado" as const,
-          updated_at: new Date().toISOString(),
+        const response = await apiClient.updateComandaStatus(comanda.id, "cancelado")
+
+        if (response.success) {
+          await refreshComandas() // Refrescar comandas después de cancelar
+          addNotification({
+            type: "error",
+            title: "Comanda Cancelada",
+            message: `Comanda #${comanda.id} - ${comanda.nombre_cliente || "Cliente"} cancelada. Monto: $${comanda.total.toLocaleString()}`,
+            duration: 5000,
+          })
+        } else {
+          throw new Error("No se pudo cancelar la comanda")
         }
-
-        await localDB.update("comandas", comandaActualizada)
-
-        setComandas(comandas.map((c) => (c.id === comanda.id ? comandaActualizada : c)))
-
-        addNotification({
-          type: "error",
-          title: "Comanda Cancelada",
-          message: `Comanda #${comanda.id} - ${comanda.nombre_cliente || "Cliente"} cancelada. Monto: $${comanda.total.toLocaleString()}`,
-          duration: 5000,
-        })
       } catch (error) {
         console.error("Error cancelando comanda:", error)
+        addNotification({
+          type: "error",
+          title: "Error",
+          message: "No se pudo cancelar la comanda",
+        })
       }
     }
   }
@@ -217,7 +197,55 @@ export function CajaSection() {
 
       {/* Lista de Comandas */}
       <div>
-        <h2 className="text-2xl font-bold text-amber-800 mb-4">Comandas</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-amber-800">Comandas</h2>
+          <div className="flex items-center gap-3">
+            {error && (
+              <Badge variant="destructive" className="text-xs">
+                Error de sincronización
+              </Badge>
+            )}
+            {lastUpdate && (
+              <div className="flex items-center gap-1 text-xs text-gray-500">
+                <Clock className="w-3 h-3" />
+                <span>
+                  Última actualización: {lastUpdate.toLocaleTimeString('es-ES')}
+                </span>
+              </div>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={refreshComandas}
+              disabled={loading}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+              Refrescar
+            </Button>
+          </div>
+        </div>
+        
+        {loading && comandas.length === 0 && (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-amber-600" />
+              <p className="text-gray-600">Cargando comandas...</p>
+            </div>
+          </div>
+        )}
+        
+        {error && comandas.length === 0 && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6 text-center">
+              <p className="text-red-800 mb-2">Error al cargar comandas</p>
+              <Button size="sm" onClick={refreshComandas}>
+                Reintentar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="grid gap-4">
           {comandas.map((comanda) => (
             <Card key={comanda.id} className="hover:shadow-md transition-shadow">
@@ -266,16 +294,49 @@ export function CajaSection() {
                             <DialogTrigger asChild>
                               <Button size="sm" onClick={() => setSelectedComanda(comanda)}>Pagar</Button>
                             </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Procesar Pago - Comanda #{comanda.id}</DialogTitle>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader className="space-y-3">
+                                <DialogTitle className="text-xl font-semibold text-gray-900">
+                                  Procesar Pago
+                                </DialogTitle>
+                                <div className="text-sm text-gray-600">
+                                  Comanda #{comanda.id} • {comanda.nombre_cliente || "Cliente"}
+                                </div>
                               </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label>Método de Pago</Label>
+                              
+                              <div className="space-y-6">
+                                {/* Resumen de la comanda */}
+                                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                                  <h4 className="font-medium text-gray-900">Resumen de la comanda</h4>
+                                  <div className="space-y-2">
+                                    {comanda.items?.map((item, index) => (
+                                      <div key={index} className="flex justify-between items-center text-sm">
+                                        <div className="flex items-center gap-2">
+                                          <span>{item.producto.emoji}</span>
+                                          <span>{item.cantidad}x {item.producto.nombre}</span>
+                                        </div>
+                                        <span className="text-gray-600">
+                                          ${(item.precio_unitario * item.cantidad).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="border-t pt-3">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-semibold text-lg">Total a pagar:</span>
+                                      <span className="font-bold text-xl text-amber-800">
+                                        ${comanda.total.toLocaleString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Método de pago */}
+                                <div className="space-y-3">
+                                  <Label className="text-sm font-medium text-gray-900">Método de Pago</Label>
                                   <Select value={metodoPago} onValueChange={setMetodoPago}>
-                                    <SelectTrigger>
-                                      <SelectValue placeholder="Seleccionar método" />
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Seleccionar método de pago" />
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="invitacion">🟣 Invitación</SelectItem>
@@ -286,24 +347,42 @@ export function CajaSection() {
                                   </Select>
                                 </div>
 
+                                {/* Nota para método "revisar" */}
                                 {metodoPago === "revisar" && (
-                                  <div>
-                                    <Label htmlFor="nota">Nota</Label>
+                                  <div className="space-y-3">
+                                    <Label htmlFor="nota" className="text-sm font-medium text-gray-900">
+                                      Nota adicional
+                                    </Label>
                                     <Textarea
                                       id="nota"
                                       value={nota}
                                       onChange={(e) => setNota(e.target.value)}
-                                      placeholder="Agregar nota..."
+                                      placeholder="Agregar nota sobre el pago..."
+                                      className="resize-none"
+                                      rows={3}
                                     />
                                   </div>
                                 )}
 
-                                <div className="flex gap-2">
+                                {/* Botones de acción */}
+                                <div className="flex gap-3 pt-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedComanda(null)
+                                      setMetodoPago("")
+                                      setNota("")
+                                    }}
+                                    className="flex-1"
+                                  >
+                                    Cancelar
+                                  </Button>
                                   <Button
                                     onClick={() => procesarPago(comanda, metodoPago, nota)}
                                     disabled={!metodoPago}
-                                    className="flex-1"
+                                    className="flex-1 bg-green-600 hover:bg-green-700"
                                   >
+                                    <Check className="w-4 h-4 mr-2" />
                                     Confirmar Pago
                                   </Button>
                                 </div>

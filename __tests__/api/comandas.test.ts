@@ -1,61 +1,41 @@
 import { POST as createComanda } from '@/app/api/comandas/create/route'
 import { GET as listComandas } from '@/app/api/comandas/list/route'
-import { POST as updateComanda } from '@/app/api/comandas/update-status/route'
-import { supabaseAdmin } from '@/lib/supabase'
-
-// Mock de Supabase Admin
-jest.mock('@/lib/supabase', () => ({
-  supabaseAdmin: {
-    from: jest.fn(),
-  },
-}))
-
-const supabaseAdminMock = supabaseAdmin as jest.Mocked<typeof supabaseAdmin>
+import { POST as updateStatus } from '@/app/api/comandas/update-status/route'
 
 describe('API de Comandas', () => {
-  afterEach(() => {
+  beforeEach(() => {
     jest.clearAllMocks()
   })
 
   // Pruebas para /api/comandas/create
   describe('POST /api/comandas/create', () => {
-    it('debería crear una comanda y retornar su ID', async () => {
-      // Arrange
-      ;(supabaseAdminMock.from as jest.Mock).mockImplementation((tableName: string) => {
-        if (tableName === 'comandas') {
-          return {
-            insert: jest.fn().mockReturnThis(),
-            select: jest.fn().mockReturnThis(),
-            single: jest.fn().mockResolvedValue({ data: { id: 101 }, error: null }),
-          }
-        }
-        if (tableName === 'comanda_items') {
-          return {
-            insert: jest.fn().mockResolvedValue({ error: null }),
-          }
-        }
-        return {}
-      })
+    it('debería crear una comanda y sus detalles', async () => {
+      const comandaData = {
+        usuario_id: 1,
+        evento_id: 1,
+        nombre_cliente: 'Cliente Test',
+        total: 100,
+        productos: [{ id: 1, cantidad: 2, precio: 50 }]
+      }
+      global.mockSupabase.from.mockReturnThis()
+      global.mockSupabase.insert.mockReturnThis()
+      global.mockSupabase.select.mockReturnThis()
+      global.mockSupabase.single.mockResolvedValue({ data: { id: 1 }, error: null })
+      global.mockSupabase.eq.mockReturnThis()
 
       const request = new Request('http://localhost/api/comandas/create', {
         method: 'POST',
-        body: JSON.stringify({
-          usuario_id: 1,
-          evento_id: 1,
-          total: 5000,
-          nombre_cliente: 'Cliente de Prueba',
-          productos: [{ id: 1, cantidad: 2, precio: 2500 }],
-        }),
+        body: JSON.stringify(comandaData),
       })
 
-      // Act
       const response = await createComanda(request)
-      const body = await response.json()
+      const data = await response.json()
 
-      // Assert
       expect(response.status).toBe(200)
-      expect(body.success).toBe(true)
-      expect(body.comanda_id).toBe(101)
+      expect(data.success).toBe(true)
+      expect(data.comanda_id).toBe(1)
+      expect(global.mockSupabase.from).toHaveBeenCalledWith('comandas')
+      expect(global.mockSupabase.from).toHaveBeenCalledWith('comanda_items')
     })
 
     it('debería retornar un error 400 con datos incompletos', async () => {
@@ -70,52 +50,49 @@ describe('API de Comandas', () => {
 
   // Pruebas para /api/comandas/list
   describe('GET /api/comandas/list', () => {
-    it('debería retornar una lista de comandas', async () => {
-      // Arrange
-      const mockComandas = [{ id: 1, total: 5000 }, { id: 2, total: 3000 }]
-      ;(supabaseAdminMock.from as jest.Mock).mockReturnValue({
-        select: jest.fn().mockReturnThis(),
-        order: jest.fn().mockResolvedValue({ data: mockComandas, error: null }),
-      })
+    it('debería retornar una lista de comandas con sus productos', async () => {
+      const mockData = [{ id: 1, total: 100, detalles_comanda: [{ id: 1, cantidad: 2 }] }]
+      global.mockSupabase.from.mockReturnThis()
+      global.mockSupabase.select.mockReturnThis()
+      global.mockSupabase.order.mockResolvedValue({ data: mockData, error: null })
 
-      const request = new Request('http://localhost/api/comandas/list', { method: 'GET' })
-      
-      // Act
-      const response = await listComandas(request)
-      const body = await response.json()
-      
-      // Assert
+      const response = await listComandas()
+      const data = await response.json()
+
       expect(response.status).toBe(200)
-      expect(body.success).toBe(true)
-      expect(body.comandas).toEqual(mockComandas)
+      expect(data.success).toBe(true)
+      expect(data.comandas.length).toBe(1)
+      expect(data.comandas[0].id).toBe(1)
     })
   })
 
   // Pruebas para /api/comandas/update-status
   describe('POST /api/comandas/update-status', () => {
     it('debería actualizar el estado de una comanda', async () => {
-      // Arrange
-      const updatedComanda = { id: 1, estado: 'pagado' }
-      ;(supabaseAdminMock.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({ data: updatedComanda, error: null }),
-      })
+      const updateData = { comanda_id: 1, estado: 'pagado', metodo_pago: 'efectivo' }
+      global.mockSupabase.from.mockReturnThis()
+      global.mockSupabase.update.mockReturnThis()
+      global.mockSupabase.eq.mockReturnThis()
+      global.mockSupabase.select.mockReturnThis()
+      global.mockSupabase.single.mockResolvedValue({ data: { id: 1, estado: 'pagado' }, error: null })
 
       const request = new Request('http://localhost/api/comandas/update-status', {
         method: 'POST',
-        body: JSON.stringify({ comanda_id: 1, estado: 'pagado' }),
+        body: JSON.stringify(updateData),
       })
 
-      // Act
-      const response = await updateComanda(request)
-      const body = await response.json()
+      const response = await updateStatus(request)
+      const data = await response.json()
 
-      // Assert
       expect(response.status).toBe(200)
-      expect(body.success).toBe(true)
-      expect(body.comanda.estado).toBe('pagado')
+      expect(data.success).toBe(true)
+      expect(global.mockSupabase.from).toHaveBeenCalledWith('comandas')
+      expect(global.mockSupabase.update).toHaveBeenCalledWith({ 
+        estado: 'pagado', 
+        metodo_pago: 'efectivo', 
+        fecha_actualizacion: expect.any(String),
+        nota: null
+      })
     })
   })
 }) 

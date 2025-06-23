@@ -45,6 +45,26 @@ class ApiClient {
     return this.request("productos/list")
   }
 
+  async createProducto(productoData: any) {
+    return this.request("productos", {
+      method: "POST",
+      body: JSON.stringify(productoData),
+    })
+  }
+
+  async updateProducto(id: number, productoData: any) {
+    return this.request(`productos/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(productoData),
+    })
+  }
+
+  async deleteProducto(id: number) {
+    return this.request(`productos/${id}`, {
+      method: "DELETE",
+    })
+  }
+
   // Comandas
   async createComanda(comandaData: any) {
     return this.request("comandas/create", {
@@ -62,6 +82,11 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify({ comanda_id, estado, metodo_pago, nota }),
     })
+  }
+
+  // Estadísticas
+  async getStats() {
+    return this.request("stats")
   }
 }
 
