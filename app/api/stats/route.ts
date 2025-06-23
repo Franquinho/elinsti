@@ -6,11 +6,33 @@ export async function GET() {
   try {
     const { data: comandas, error } = await supabaseAdmin
       .from('comandas')
-      .select('created_at, total, estado, metodo_pago, productos:comanda_items(cantidad)');
+      .select('fecha_creacion, total, estado, metodo_pago, productos:comanda_items(cantidad)');
 
-    if (error) throw error;
-    if (!comandas) {
-        return NextResponse.json({ success: false, message: "No se encontraron comandas." }, { status: 404 });
+    if (error) {
+      console.error("Error obteniendo comandas:", error);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al obtener comandas" 
+      }, { status: 500 });
+    }
+
+    if (!comandas || comandas.length === 0) {
+        return NextResponse.json({ 
+          success: true, 
+          stats: {
+            ventasHoy: 0,
+            ventasSemana: 0,
+            ventasMes: 0,
+            productosVendidos: 0,
+            totalEfectivo: 0,
+            totalTransferencia: 0,
+            totalInvitacion: 0,
+            cancelacionesHoy: 0,
+            montoCancelado: 0,
+            comandasTotales: 0,
+            tasaCancelacion: 0
+          }
+        });
     }
 
     const hoy = startOfToday();
@@ -29,7 +51,7 @@ export async function GET() {
     let comandasTotalesHoy = 0;
 
     for (const comanda of comandas) {
-        const fechaComanda = new Date(comanda.created_at);
+        const fechaComanda = new Date(comanda.fecha_creacion);
 
         if (comanda.estado === 'pagado') {
             if (fechaComanda >= hoy) {
@@ -84,4 +106,4 @@ export async function GET() {
     console.error("Error al calcular estadísticas:", error);
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
-} 
+}

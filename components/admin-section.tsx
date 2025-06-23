@@ -73,20 +73,33 @@ export function AdminSection() {
         apiClient.getStats(),
       ]);
 
-      if (productosRes.success) {
-        setProductos(productosRes.productos || []);
-      } else {
-        toast({ title: "Error", description: "No se pudieron cargar los productos.", variant: "destructive" });
+      if (!productosRes.success) {
+        console.error("Error al cargar productos:", productosRes.message);
+        toast({ 
+          title: "Error", 
+          description: "No se pudieron cargar los productos. Intenta recargar la página.",
+          variant: "destructive" 
+        });
+        return;
       }
+      setProductos(productosRes.productos || []);
 
-      if (statsRes.success) {
-        setEstadisticas(statsRes.stats || initialStats);
-      } else {
-        toast({ title: "Error", description: "No se pudieron cargar las estadísticas.", variant: "destructive" });
+      if (!statsRes.success) {
+        console.error("Error al cargar estadísticas:", statsRes.message);
+        toast({ 
+          title: "Error", 
+          description: "No se pudieron cargar las estadísticas. Las estadísticas mostrarán valores por defecto.",
+          variant: "destructive" 
+        });
       }
-    } catch (error) {
+      setEstadisticas(statsRes.stats || initialStats);
+    } catch (error: any) {
       console.error("Error cargando datos:", error);
-      toast({ title: "Error", description: "Ocurrió un error al cargar los datos del administrador.", variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: "Ocurrió un error al cargar los datos. Intenta recargar la página.",
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -117,60 +130,93 @@ export function AdminSection() {
   }
 
   const handleFormSubmit = async (e: React.FormEvent, action: 'create' | 'update') => {
-      e.preventDefault();
-      setIsSubmitting(true);
+    e.preventDefault();
+    setIsSubmitting(true);
 
-      try {
-          let res;
-          if (action === 'create') {
-              if (!nuevoProducto.nombre || nuevoProducto.precio <= 0) {
-                  toast({ title: "Error de validación", description: "El nombre y el precio son obligatorios.", variant: "destructive" });
-                  return;
-              };
-              res = await apiClient.createProducto({ ...nuevoProducto, activo: true });
-              if (res.success) {
-                  setProductos([...productos, res.producto]);
-                  setNuevoProducto({ nombre: "", precio: 0, emoji: "📦" });
-                  toast({ title: "Éxito", description: "Producto creado correctamente." });
-              }
-          } else {
-              if (!editandoProducto) return;
-              res = await apiClient.updateProducto(editandoProducto.id, editandoProducto);
-               if (res.success) {
-                  setProductos(productos.map((p) => (p.id === editandoProducto.id ? res.producto : p)));
-                  setEditandoProducto(null);
-                  toast({ title: "Éxito", description: "Producto actualizado correctamente." });
-              }
-          }
+    try {
+      const producto = action === 'create' ? nuevoProducto : editandoProducto;
+      if (!producto) throw new Error('Producto no encontrado');
 
-          if (!res.success) {
-              throw new Error(res.message);
-          }
-      } catch (error: any) {
-          console.error(`Error en ${action} producto:`, error);
-          toast({ title: "Error", description: `No se pudo ${action === 'create' ? 'crear' : 'actualizar'} el producto: ${error.message}`, variant: "destructive" });
-      } finally {
-          setIsSubmitting(false);
-          // Cierra el diálogo correspondiente
-          if (action === 'create') document.getElementById('close-create-dialog')?.click();
-          if (action === 'update') document.getElementById('close-update-dialog')?.click();
+      // Validaciones comunes
+      if (!producto.nombre?.trim()) {
+        throw new Error('El nombre es requerido');
       }
+
+      if (producto.precio <= 0) {
+        throw new Error('El precio debe ser mayor a 0');
+      }
+
+      if (!producto.emoji || !emojisDisponibles.includes(producto.emoji)) {
+        throw new Error('Emoji no válido');
+      }
+
+      let res;
+      if (action === 'create') {
+        res = await apiClient.createProducto({ 
+          ...producto, 
+          activo: true,
+          nombre: producto.nombre.trim(),
+          precio: Number(producto.precio)
+        });
+        if (res.success) {
+          setProductos([...productos, res.producto]);
+          setNuevoProducto({ nombre: "", precio: 0, emoji: "📦" });
+          toast({ title: "Éxito", description: "Producto creado correctamente." });
+        }
+      } else {
+        if (!editandoProducto) {
+          throw new Error('No se puede actualizar un producto sin seleccionar uno');
+        }
+        const res: { success: boolean; message?: string; producto?: Producto } = await apiClient.updateProducto(editandoProducto.id, {
+          ...editandoProducto,
+          nombre: editandoProducto.nombre.trim(),
+          precio: Number(editandoProducto.precio)
+        });
+        if (res.success) {
+          setProductos(productos.map((p) => (p.id === editandoProducto.id ? res.producto : p)));
+          setEditandoProducto(null);
+          toast({ title: "Éxito", description: "Producto actualizado correctamente." });
+        }
+      }
+
+      if (!res.success) {
+        throw new Error(res.message);
+      }
+    } catch (error: any) {
+      console.error(`Error en ${action} producto:`, error);
+      toast({ 
+        title: "Error", 
+        description: `No se pudo ${action === 'create' ? 'crear' : 'actualizar'} el producto: ${error.message}`, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+      // Cierra el diálogo correspondiente
+      if (action === 'create') document.getElementById('close-create-dialog')?.click();
+      if (action === 'update') document.getElementById('close-update-dialog')?.click();
+    }
   };
 
   const eliminarProducto = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar este producto? Esta acción no se puede deshacer.")) {
-      try {
-        const res = await apiClient.deleteProducto(id);
-        if (res.success) {
-          setProductos(productos.filter((p) => p.id !== id))
-          toast({ title: "Éxito", description: "Producto eliminado correctamente." });
-        } else {
-          throw new Error(res.message);
-        }
-      } catch (error: any) {
-        console.error("Error eliminando producto:", error)
-        toast({ title: "Error", description: `No se pudo eliminar el producto: ${error.message}`, variant: "destructive" });
+    try {
+      if (!confirm("¿Estás seguro de eliminar este producto? Esta acción no se puede deshacer.")) {
+        return;
       }
+
+      const res = await apiClient.deleteProducto(id);
+      if (res.success) {
+        setProductos(productos.filter((p) => p.id !== id));
+        toast({ title: "Éxito", description: "Producto eliminado correctamente." });
+      } else {
+        throw new Error(res.message);
+      }
+    } catch (error: any) {
+      console.error("Error eliminando producto:", error);
+      toast({ 
+        title: "Error", 
+        description: `No se pudo eliminar el producto: ${error.message}`, 
+        variant: "destructive" 
+      });
     }
   }
 
@@ -273,18 +319,40 @@ export function AdminSection() {
                                {editandoProducto && (
                                 <form onSubmit={(e) => handleFormSubmit(e, 'update')} className="space-y-4">
                                     <div className="space-y-2">
-                                      <Label htmlFor="edit-nombre">Nombre</Label>
-                                      <Input id="edit-nombre" value={editandoProducto.nombre} onChange={(e) => setEditandoProducto({ ...editandoProducto, nombre: e.target.value })}/>
+                                      <Label htmlFor="nombre">Nombre</Label>
+                                      <Input 
+                                        id="nombre" 
+                                        value={editandoProducto.nombre} 
+                                        onChange={(e) => setEditandoProducto(prev => prev ? { ...prev, nombre: e.target.value } : null)} 
+                                        placeholder="Ej: Café con leche" 
+                                        disabled={isSubmitting}
+                                      />
                                     </div>
                                     <div className="space-y-2">
-                                      <Label htmlFor="edit-precio">Precio</Label>
-                                      <Input id="edit-precio" type="number" value={editandoProducto.precio} onChange={(e) => setEditandoProducto({ ...editandoProducto, precio: parseFloat(e.target.value) || 0 })}/>
+                                      <Label htmlFor="precio">Precio</Label>
+                                      <Input 
+                                        id="precio" 
+                                        type="number" 
+                                        min="0.01" 
+                                        step="0.01"
+                                        value={editandoProducto.precio} 
+                                        onChange={(e) => setEditandoProducto(prev => prev ? { ...prev, precio: parseFloat(e.target.value) || 0 } : null)} 
+                                        placeholder="Ej: 1500" 
+                                        disabled={isSubmitting}
+                                      />
                                     </div>
                                     <div className="space-y-2">
                                       <Label>Emoji</Label>
                                       <div className="grid grid-cols-6 gap-2">
                                         {emojisDisponibles.map((emoji) => (
-                                          <Button key={emoji} type="button" variant={editandoProducto.emoji === emoji ? 'default' : 'outline'} className="text-2xl" onClick={() => setEditandoProducto({ ...editandoProducto, emoji })}>
+                                          <Button 
+                                            key={emoji} 
+                                            type="button" 
+                                            variant={editandoProducto.emoji === emoji ? "default" : "outline"} 
+                                            className="text-2xl" 
+                                            onClick={() => setEditandoProducto(prev => prev ? { ...prev, emoji } : null)}
+                                            disabled={isSubmitting}
+                                          >
                                             {emoji}
                                           </Button>
                                         ))}
@@ -292,9 +360,13 @@ export function AdminSection() {
                                     </div>
                                     <DialogFooter>
                                       <DialogClose asChild id="close-update-dialog">
-                                          <Button type="button" variant="ghost">Cancelar</Button>
+                                          <Button type="button" variant="ghost" disabled={isSubmitting}>Cancelar</Button>
                                       </DialogClose>
-                                      <Button type="submit" disabled={isSubmitting} className="bg-amber-600 hover:bg-amber-700">
+                                      <Button 
+                                        type="submit" 
+                                        disabled={isSubmitting || !editandoProducto} 
+                                        className="bg-amber-600 hover:bg-amber-700"
+                                      >
                                          {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                          Guardar Cambios
                                       </Button>

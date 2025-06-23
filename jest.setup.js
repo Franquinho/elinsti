@@ -10,6 +10,7 @@ const createMockSupabase = () => {
     update: jest.fn().mockReturnThis(),
     delete: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
+    in: jest.fn().mockReturnThis(),
     order: jest.fn().mockReturnThis(),
     single: jest.fn().mockResolvedValue({ data: undefined, error: null }),
     // Métodos terminales típicos de Supabase

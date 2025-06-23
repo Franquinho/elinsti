@@ -63,6 +63,16 @@ export function VentasSection() {
   }, [addNotification])
 
   const agregarProducto = (producto: Producto) => {
+    if (!producto.activo) {
+      addNotification({
+        type: "error",
+        title: "Error",
+        message: "No se pueden agregar productos inactivos a la comanda",
+        duration: 3000,
+      });
+      return;
+    }
+
     const existente = comanda.find((item) => item.id === producto.id)
     if (existente) {
       setComanda(comanda.map((item) => (item.id === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item)))
@@ -99,8 +109,8 @@ export function VentasSection() {
         title: "Error",
         message: "Debe agregar al menos un producto",
         duration: 3000,
-      })
-      return
+      });
+      return;
     }
 
     if (!nombreCliente.trim()) {
@@ -109,11 +119,11 @@ export function VentasSection() {
         title: "Error",
         message: "Debe ingresar el nombre del cliente",
         duration: 3000,
-      })
-      return
+      });
+      return;
     }
 
-    setIsCreatingComanda(true)
+    setIsCreatingComanda(true);
 
     try {
       const comandaData = {
@@ -121,36 +131,40 @@ export function VentasSection() {
         evento_id: 1,
         total: calcularTotal(),
         nombre_cliente: nombreCliente.trim(),
-        productos: comanda,
-      }
+        items: comanda.map(({ id, cantidad, precio }) => ({
+          producto_id: id,
+          cantidad,
+          precio_unitario: precio,
+        })),
+      };
 
-      const response = await apiClient.createComanda(comandaData)
+      const response = await apiClient.createComanda(comandaData);
 
       if (response.success) {
         // Limpiar formulario
-        setComanda([])
-        setNombreCliente("")
+        setComanda([]);
+        setNombreCliente("");
         
         // Refrescar comandas para sincronizar con Caja
-        await refreshComandas()
+        await refreshComandas();
 
         addNotification({
           type: "music",
           title: "¡Comanda Creada!",
           message: `Comanda #${response.comanda_id} para ${nombreCliente} creada exitosamente 🎵`,
           duration: 4000,
-        })
+        });
       }
     } catch (error) {
-      console.error("Error creando comanda:", error)
+      console.error("Error creando comanda:", error);
       addNotification({
         type: "error",
         title: "Error",
         message: "No se pudo crear la comanda",
         duration: 3000,
-      })
+      });
     } finally {
-      setIsCreatingComanda(false)
+      setIsCreatingComanda(false);
     }
   }
 
