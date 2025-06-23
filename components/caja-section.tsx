@@ -19,17 +19,20 @@ interface Comanda {
   id: number
   usuario_id: number
   nombre_cliente?: string
-  productos: Array<{
-    nombre: string
+  items: Array<{
     cantidad: number
-    precio: number
-    emoji: string
+    precio_unitario: number
+    producto: {
+      nombre: string
+      emoji: string
+    }
   }>
   total: number
   estado: "pendiente" | "pagado" | "cancelado"
   metodo_pago?: string
   nota?: string
   created_at: string
+  usuario?: { nombre: string }
 }
 
 export function CajaSection() {
@@ -236,14 +239,14 @@ export function CajaSection() {
                     </div>
 
                     <div className="space-y-2 mb-3">
-                      {comanda.productos?.map((producto, index) => (
+                      {comanda.items?.map((item, index) => (
                         <div key={index} className="flex items-center gap-2 text-sm">
-                          <span>{producto.emoji}</span>
+                          <span>{item.producto.emoji}</span>
                           <span>
-                            {producto.cantidad}x {producto.nombre}
+                            {item.cantidad}x {item.producto.nombre}
                           </span>
                           <span className="text-gray-600">
-                            ${(producto.precio * producto.cantidad).toLocaleString()}
+                            ${(item.precio_unitario * item.cantidad).toLocaleString()}
                           </span>
                         </div>
                       ))}
