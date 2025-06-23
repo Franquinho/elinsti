@@ -256,9 +256,69 @@ export function CajaSection() {
                       ))}
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mt-4">
                       <span className="font-bold text-lg text-amber-800">Total: ${comanda.total.toLocaleString()}</span>
-                      <span className="text-sm text-gray-500">{new Date(comanda.fecha_creacion).toLocaleTimeString()}</span>
+                      
+                      {/* Renderizado condicional de botones */}
+                      {comanda.estado === 'pendiente' && (
+                        <div className="flex items-center gap-2">
+                          <Dialog open={selectedComanda?.id === comanda.id} onOpenChange={(isOpen) => !isOpen && setSelectedComanda(null)}>
+                            <DialogTrigger asChild>
+                              <Button size="sm" onClick={() => setSelectedComanda(comanda)}>Pagar</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Procesar Pago - Comanda #{comanda.id}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label>Método de Pago</Label>
+                                  <Select value={metodoPago} onValueChange={setMetodoPago}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Seleccionar método" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="invitacion">🟣 Invitación</SelectItem>
+                                      <SelectItem value="transferencia">🔵 Transferencia</SelectItem>
+                                      <SelectItem value="efectivo">🟢 Efectivo</SelectItem>
+                                      <SelectItem value="revisar">🟠 Revisar</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                {metodoPago === "revisar" && (
+                                  <div>
+                                    <Label htmlFor="nota">Nota</Label>
+                                    <Textarea
+                                      id="nota"
+                                      value={nota}
+                                      onChange={(e) => setNota(e.target.value)}
+                                      placeholder="Agregar nota..."
+                                    />
+                                  </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                  <Button
+                                    onClick={() => procesarPago(comanda, metodoPago, nota)}
+                                    disabled={!metodoPago}
+                                    className="flex-1"
+                                  >
+                                    Confirmar Pago
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => cancelarComanda(comanda)}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {comanda.nota && (
@@ -280,74 +340,6 @@ export function CajaSection() {
                   </div>
 
                   <div className="flex gap-2 ml-4">
-                    {comanda.estado === "pendiente" && (
-                      <>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                              onClick={() => setSelectedComanda(comanda)}
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Procesar Pago - Comanda #{comanda.id}</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label>Método de Pago</Label>
-                                <Select value={metodoPago} onValueChange={setMetodoPago}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Seleccionar método" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="invitacion">🟣 Invitación</SelectItem>
-                                    <SelectItem value="transferencia">🔵 Transferencia</SelectItem>
-                                    <SelectItem value="efectivo">🟢 Efectivo</SelectItem>
-                                    <SelectItem value="revisar">🟠 Revisar</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {metodoPago === "revisar" && (
-                                <div>
-                                  <Label htmlFor="nota">Nota</Label>
-                                  <Textarea
-                                    id="nota"
-                                    value={nota}
-                                    onChange={(e) => setNota(e.target.value)}
-                                    placeholder="Agregar nota..."
-                                  />
-                                </div>
-                              )}
-
-                              <div className="flex gap-2">
-                                <Button
-                                  onClick={() => procesarPago(comanda, metodoPago, nota)}
-                                  disabled={!metodoPago}
-                                  className="flex-1"
-                                >
-                                  Confirmar Pago
-                                </Button>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-red-200 text-red-600 hover:bg-red-50"
-                          onClick={() => cancelarComanda(comanda)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                        <PrintComanda comanda={comanda} />
-                      </>
-                    )}
                     {comanda.estado === "pagado" && <PrintComanda comanda={comanda} />}
                   </div>
                 </div>

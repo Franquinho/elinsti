@@ -119,6 +119,12 @@ ALTER TABLE usuarios ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Usuarios pueden ver sus propios datos" ON usuarios
   FOR SELECT USING (auth.email() = email);
+
+-- Política para que el servicio pueda actualizar comandas
+CREATE POLICY "Permitir actualizaciones de servicio en comandas" ON comandas
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
 ```
 
 ## Notas Importantes
