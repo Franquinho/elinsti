@@ -287,9 +287,9 @@ export function CajaSection() {
                     <div className="flex items-center justify-between mt-4">
                       <span className="font-bold text-lg text-amber-800">Total: ${comanda.total.toLocaleString()}</span>
                       
-                      {/* Renderizado condicional de botones */}
-                      {comanda.estado === 'pendiente' && (
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        {/* Botón Pagar: solo para pendientes */}
+                        {comanda.estado === 'pendiente' && (
                           <Dialog open={selectedComanda?.id === comanda.id} onOpenChange={(isOpen) => !isOpen && setSelectedComanda(null)}>
                             <DialogTrigger asChild>
                               <Button size="sm" onClick={() => setSelectedComanda(comanda)}>Pagar</Button>
@@ -389,15 +389,20 @@ export function CajaSection() {
                               </div>
                             </DialogContent>
                           </Dialog>
-                          <Button
+                        )}
+                        
+                        {/* Botón Cancelar: para pendientes y pagadas */}
+                        {(comanda.estado === 'pendiente' || comanda.estado === 'pagado') && (
+                           <Button
                             size="sm"
                             variant="destructive"
                             onClick={() => cancelarComanda(comanda)}
+                            title="Cancelar Comanda"
                           >
                             <X className="w-4 h-4" />
                           </Button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     {comanda.nota && (

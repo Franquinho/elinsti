@@ -15,6 +15,7 @@ export async function GET() {
           producto:productos(nombre, emoji)
         )
       `)
+      .in('estado', ['pendiente', 'pagado'])
       .order('fecha_creacion', { ascending: false });
 
     if (error) {
