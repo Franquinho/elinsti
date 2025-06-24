@@ -4,6 +4,7 @@ export const supabaseAdmin = {
     select: jest.fn(() => ({
       eq: jest.fn(() => ({
         single: jest.fn(() => Promise.resolve({ data: null, error: null })),
+        limit: jest.fn(() => Promise.resolve({ data: [], error: null })),
         order: jest.fn(() => Promise.resolve({ data: [], error: null }))
       })),
       in: jest.fn(() => ({

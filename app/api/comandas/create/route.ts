@@ -3,15 +3,28 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
-    const { usuario_id, evento_id, total, nombre_cliente, productos } = await request.json();
+    const body = await request.json();
+    console.log("🔔 [API] Datos recibidos en /api/comandas/create:", body);
+    
+    const { usuario_id, evento_id, total, nombre_cliente, productos } = body;
 
     // Validar datos requeridos
     if (!usuario_id || !evento_id || !total || !nombre_cliente || !productos || productos.length === 0) {
+      console.log("🔴 [API] Validación fallida:", {
+        usuario_id: !!usuario_id,
+        evento_id: !!evento_id,
+        total: !!total,
+        nombre_cliente: !!nombre_cliente,
+        productos: !!productos,
+        productosLength: productos?.length
+      });
       return NextResponse.json({ 
         success: false, 
         message: "Datos incompletos" 
       }, { status: 400 });
     }
+
+    console.log("🟢 [API] Datos válidos, creando comanda...");
 
     // Crear la comanda
     const { data: comanda, error: comandaError } = await supabaseAdmin
@@ -19,6 +32,7 @@ export async function POST(request: Request) {
       .insert({
         usuario_id,
         evento_id,
+        caja_id: 1, // Valor por defecto para caja_id
         total,
         nombre_cliente,
         estado: 'pendiente',
@@ -35,6 +49,8 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
+    console.log("🟢 [API] Comanda creada, ID:", comanda.id);
+
     // Crear los items de la comanda
     const itemsComanda = productos.map((producto: any) => ({
       comanda_id: comanda.id,
@@ -43,6 +59,8 @@ export async function POST(request: Request) {
       precio_unitario: producto.precio,
       subtotal: producto.precio * producto.cantidad
     }));
+
+    console.log("🔔 [API] Items a crear:", itemsComanda);
 
     const { error: itemsError } = await supabaseAdmin
       .from('comanda_items')
@@ -57,6 +75,8 @@ export async function POST(request: Request) {
         message: "Error al crear items de comanda" 
       }, { status: 500 });
     }
+
+    console.log("🟢 [API] Comanda creada exitosamente, ID:", comanda.id);
 
     return NextResponse.json({ 
       success: true, 

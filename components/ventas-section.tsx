@@ -131,10 +131,10 @@ export function VentasSection() {
         evento_id: 1,
         total: calcularTotal(),
         nombre_cliente: nombreCliente.trim(),
-        items: comanda.map(({ id, cantidad, precio }) => ({
-          producto_id: id,
+        productos: comanda.map(({ id, cantidad, precio }) => ({
+          id,
           cantidad,
-          precio_unitario: precio,
+          precio,
         })),
       };
 

@@ -107,13 +107,33 @@ describe('API de Administración', () => {
   });
 
   describe('DELETE /api/productos/[id]', () => {
-    it('debería eliminar un producto', async () => {
-        // Configurar el mock para devolver éxito
-        global.mockSupabase.from.mockReturnValue({
-          delete: jest.fn().mockReturnValue({
-            eq: jest.fn().mockResolvedValue({ error: null })
+    it('debería eliminar un producto que no está siendo usado', async () => {
+        // Configurar el mock para simular que el producto no está siendo usado
+        const mockFrom = jest.fn()
+          .mockReturnValueOnce({
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ 
+                  data: { id: 1, nombre: 'Test Producto', activo: true }, 
+                  error: null 
+                })
+              })
+            })
           })
-        });
+          .mockReturnValueOnce({
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue({ data: [], error: null })
+              })
+            })
+          })
+          .mockReturnValueOnce({
+            delete: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({ error: null })
+            })
+          });
+
+        global.mockSupabase.from = mockFrom;
 
         const request = new Request('http://localhost/api/productos/1', {
             method: 'DELETE',
@@ -124,8 +144,86 @@ describe('API de Administración', () => {
 
         expect(response.status).toBe(200);
         expect(data.success).toBe(true);
-        expect(data.message).toBe('Producto eliminado correctamente');
+        expect(data.message).toBe('Producto "Test Producto" eliminado correctamente');
         expect(global.mockSupabase.from).toHaveBeenCalledWith('productos');
+    });
+
+    it('debería desactivar un producto que está siendo usado en comandas', async () => {
+        // Configurar el mock para simular que el producto está siendo usado
+        const mockFrom = jest.fn()
+          .mockReturnValueOnce({
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                single: jest.fn().mockResolvedValue({ 
+                  data: { id: 1, nombre: 'Producto Usado', activo: true }, 
+                  error: null 
+                })
+              })
+            })
+          })
+          .mockReturnValueOnce({
+            select: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                limit: jest.fn().mockResolvedValue({ 
+                  data: [{ comanda_id: 1 }], 
+                  error: null 
+                })
+              })
+            })
+          })
+          .mockReturnValueOnce({
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({ 
+                    data: { id: 1, nombre: 'Producto Usado', activo: false }, 
+                    error: null 
+                  })
+                })
+              })
+            })
+          });
+
+        global.mockSupabase.from = mockFrom;
+
+        const request = new Request('http://localhost/api/productos/1', {
+            method: 'DELETE',
+        });
+
+        const response = await deleteProducto(request, { params: { id: '1' } });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(data.message).toBe('Producto "Producto Usado" desactivado (está siendo usado en comandas)');
+        expect(data.producto.activo).toBe(false);
+    });
+
+    it('debería devolver error si el producto no existe', async () => {
+        // Configurar el mock para simular que el producto no existe
+        const mockFrom = jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({ 
+                data: null, 
+                error: { message: 'No rows returned' } 
+              })
+            })
+          })
+        });
+
+        global.mockSupabase.from = mockFrom;
+
+        const request = new Request('http://localhost/api/productos/999', {
+            method: 'DELETE',
+        });
+
+        const response = await deleteProducto(request, { params: { id: '999' } });
+        const data = await response.json();
+
+        expect(response.status).toBe(404);
+        expect(data.success).toBe(false);
+        expect(data.message).toBe('Producto no encontrado');
     });
   });
 }); 

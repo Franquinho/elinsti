@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 }
 
-// DELETE - Eliminar un producto
+// DELETE - Soft delete de un producto (marcar como inactivo)
 export async function DELETE(request: Request, { params }: { params: { id: string } }) {
   try {
     const id = params.id;
@@ -36,10 +36,59 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       return NextResponse.json({ success: false, message: "ID de producto es requerido" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin.from('productos').delete().eq('id', id);
+    // Verificar si el producto existe
+    const { data: productoExistente, error: checkError } = await supabaseAdmin
+      .from('productos')
+      .select('id, nombre, activo')
+      .eq('id', id)
+      .single();
 
-    if (error) throw error;
-    return NextResponse.json({ success: true, message: "Producto eliminado correctamente" });
+    if (checkError || !productoExistente) {
+      return NextResponse.json({ success: false, message: "Producto no encontrado" }, { status: 404 });
+    }
+
+    // Verificar si el producto está siendo usado en comandas
+    const { data: comandasConProducto, error: comandasError } = await supabaseAdmin
+      .from('comanda_items')
+      .select('comanda_id')
+      .eq('producto_id', id)
+      .limit(1);
+
+    if (comandasError) {
+      console.error("Error verificando uso del producto:", comandasError);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error verificando uso del producto" 
+      }, { status: 500 });
+    }
+
+    if (comandasConProducto && comandasConProducto.length > 0) {
+      // El producto está siendo usado, solo marcarlo como inactivo
+      const { data, error } = await supabaseAdmin
+        .from('productos')
+        .update({ activo: false })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `Producto "${productoExistente.nombre}" desactivado (está siendo usado en comandas)`,
+        producto: data
+      });
+    } else {
+      // El producto no está siendo usado, eliminarlo físicamente
+      const { error } = await supabaseAdmin.from('productos').delete().eq('id', id);
+
+      if (error) throw error;
+      
+      return NextResponse.json({ 
+        success: true, 
+        message: `Producto "${productoExistente.nombre}" eliminado correctamente`
+      });
+    }
 
   } catch (error: any) {
     console.error(`Error al eliminar producto ${params.id}:`, error);
