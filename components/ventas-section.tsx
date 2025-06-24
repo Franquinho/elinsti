@@ -44,7 +44,10 @@ export function VentasSection() {
         setLoading(true)
         const response = await apiClient.getProductos()
         if (response.success) {
-          setProductos(response.productos)
+          // Filtrar solo productos activos en el frontend también
+          const productosActivos = response.productos.filter((producto: Producto) => producto.activo === true)
+          console.log("🔔 [Frontend] Productos cargados:", response.productos.length, "total,", productosActivos.length, "activos")
+          setProductos(productosActivos)
         }
       } catch (error) {
         console.error("Error cargando productos:", error)
@@ -61,6 +64,34 @@ export function VentasSection() {
 
     cargarProductos()
   }, [addNotification])
+
+  const refrescarProductos = async () => {
+    try {
+      setLoading(true)
+      const response = await apiClient.getProductos()
+      if (response.success) {
+        const productosActivos = response.productos.filter((producto: Producto) => producto.activo === true)
+        console.log("🔔 [Frontend] Productos refrescados:", response.productos.length, "total,", productosActivos.length, "activos")
+        setProductos(productosActivos)
+        addNotification({
+          type: "success",
+          title: "Productos Actualizados",
+          message: "Lista de productos refrescada correctamente",
+          duration: 2000,
+        })
+      }
+    } catch (error) {
+      console.error("Error refrescando productos:", error)
+      addNotification({
+        type: "error",
+        title: "Error",
+        message: "No se pudieron refrescar los productos",
+        duration: 3000,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const agregarProducto = (producto: Producto) => {
     if (!producto.activo) {
@@ -195,11 +226,23 @@ export function VentasSection() {
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Productos disponibles */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Music2 className="w-6 h-6 text-pink-500" />
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">
-            Productos Disponibles
-          </h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Music2 className="w-6 h-6 text-pink-500" />
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">
+              Productos Disponibles
+            </h2>
+          </div>
+          <Button
+            onClick={refrescarProductos}
+            variant="outline"
+            size="sm"
+            className="border-pink-200 text-pink-600 hover:bg-pink-50"
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refrescar
+          </Button>
         </div>
         <div className="grid gap-3">
           {productos.map((producto) => (

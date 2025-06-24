@@ -27,22 +27,32 @@ export async function POST(request: Request) {
     console.log("🟢 [API] Datos válidos, creando comanda...");
 
     // Crear la comanda
+    const comandaData = {
+      usuario_id,
+      evento_id,
+      caja_id: 1, // Valor por defecto para caja_id
+      total,
+      nombre_cliente,
+      estado: 'pendiente',
+      fecha_creacion: new Date().toISOString()
+    };
+
+    console.log("🔔 [API] Datos de comanda a insertar:", comandaData);
+
     const { data: comanda, error: comandaError } = await supabaseAdmin
       .from('comandas')
-      .insert({
-        usuario_id,
-        evento_id,
-        caja_id: 1, // Valor por defecto para caja_id
-        total,
-        nombre_cliente,
-        estado: 'pendiente',
-        fecha_creacion: new Date().toISOString()
-      })
+      .insert(comandaData)
       .select()
       .single();
 
     if (comandaError) {
-      console.error("Error creando comanda:", comandaError);
+      console.error("🔴 [API] Error creando comanda:", comandaError);
+      console.error("🔴 [API] Detalles del error:", {
+        code: comandaError.code,
+        message: comandaError.message,
+        details: comandaError.details,
+        hint: comandaError.hint
+      });
       return NextResponse.json({ 
         success: false, 
         message: "Error al crear comanda" 
@@ -67,7 +77,13 @@ export async function POST(request: Request) {
       .insert(itemsComanda);
 
     if (itemsError) {
-      console.error("Error creando items:", itemsError);
+      console.error("🔴 [API] Error creando items:", itemsError);
+      console.error("🔴 [API] Detalles del error de items:", {
+        code: itemsError.code,
+        message: itemsError.message,
+        details: itemsError.details,
+        hint: itemsError.hint
+      });
       // Intentar eliminar la comanda si fallan los items
       await supabaseAdmin.from('comandas').delete().eq('id', comanda.id);
       return NextResponse.json({ 
@@ -85,7 +101,8 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error("Error inesperado:", error);
+    console.error("🔴 [API] Error inesperado:", error);
+    console.error("🔴 [API] Stack trace:", error instanceof Error ? error.stack : 'No stack trace available');
     return NextResponse.json({ 
       success: false, 
       message: "Error interno del servidor" 
