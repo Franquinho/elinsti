@@ -45,6 +45,10 @@ class ApiClient {
     return this.request("productos/list")
   }
 
+  async getProductosAdmin() {
+    return this.request("productos/admin")
+  }
+
   async createProducto(productoData: any) {
     return this.request("productos", {
       method: "POST",
@@ -63,6 +67,33 @@ class ApiClient {
     return this.request(`productos/${id}`, {
       method: "DELETE",
     })
+  }
+
+  // Eventos
+  async getEventos() {
+    return this.request("eventos")
+  }
+
+  async createEvento(eventoData: any) {
+    return this.request("eventos", {
+      method: "POST",
+      body: JSON.stringify(eventoData),
+    })
+  }
+
+  async getEventoActivo() {
+    return this.request("eventos/active")
+  }
+
+  async setEventoActivo(eventoId: number) {
+    return this.request("eventos/active", {
+      method: "POST",
+      body: JSON.stringify({ evento_id: eventoId }),
+    })
+  }
+
+  async getEventosStats() {
+    return this.request("eventos/stats")
   }
 
   // Comandas

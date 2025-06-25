@@ -1,6 +1,7 @@
 import { GET as getStats } from '@/app/api/stats/route';
 import { POST as createProducto } from '@/app/api/productos/route';
 import { PATCH as updateProducto, DELETE as deleteProducto } from '@/app/api/productos/[id]/route';
+import { GET as getProductosAdmin } from '@/app/api/productos/admin/route';
 
 describe('API de Administración', () => {
 
@@ -32,6 +33,54 @@ describe('API de Administración', () => {
         expect(data.stats.tasaCancelacion).toBe(50);
         
         expect(global.mockSupabase.from).toHaveBeenCalledWith('comandas');
+    });
+  });
+
+  // Pruebas para /api/productos/admin
+  describe('GET /api/productos/admin', () => {
+    it('debería obtener todos los productos (activos e inactivos) para administración', async () => {
+        const productosMock = [
+          { id: 1, nombre: 'Producto Activo', precio: 10, emoji: '🍺', activo: true },
+          { id: 2, nombre: 'Producto Inactivo', precio: 15, emoji: '🍷', activo: false },
+          { id: 3, nombre: 'Otro Activo', precio: 20, emoji: '☕', activo: true }
+        ];
+        
+        global.mockSupabase.from.mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            order: jest.fn().mockResolvedValue({ 
+              data: productosMock, 
+              error: null 
+            })
+          })
+        });
+        
+        const response = await getProductosAdmin();
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(data.productos).toHaveLength(3);
+        expect(data.productos[0].activo).toBe(true);
+        expect(data.productos[1].activo).toBe(false);
+        expect(global.mockSupabase.from).toHaveBeenCalledWith('productos');
+    });
+
+    it('debería manejar errores al obtener productos para administración', async () => {
+        global.mockSupabase.from.mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            order: jest.fn().mockResolvedValue({ 
+              data: null, 
+              error: { message: 'Error de base de datos' } 
+            })
+          })
+        });
+        
+        const response = await getProductosAdmin();
+        const data = await response.json();
+
+        expect(response.status).toBe(500);
+        expect(data.success).toBe(false);
+        expect(data.message).toBe('Error al obtener productos');
     });
   });
 

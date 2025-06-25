@@ -1,56 +1,79 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, TrendingDown, Users, Clock, Music, DollarSign, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, TrendingDown, Users, Clock, Music, DollarSign, X, RefreshCw, BarChart3, Target, Zap } from "lucide-react"
+import { apiClient } from "@/lib/api"
 
 interface StatsData {
   ventasHoy: number
-  ventasAyer: number
-  clientesUnicos: number
-  horasPico: string[]
-  productoMasVendido: {
-    nombre: string
-    emoji: string
-    cantidad: number
-  }
-  tiempoPromedio: number
-  satisfaccion: number
-  // Nuevos campos
+  ventasSemana: number
+  ventasMes: number
+  productosVendidos: number
+  totalEfectivo: number
+  totalTransferencia: number
+  totalInvitacion: number
   cancelacionesHoy: number
   montoCancelado: number
-  ventasBrutas: number // Ventas antes de cancelaciones
+  comandasTotales: number
+  tasaCancelacion: number
 }
 
-export function AdvancedStats() {
+interface AdvancedStatsProps {
+  stats: StatsData
+  onRefresh: () => void
+}
+
+export function AdvancedStats({ stats, onRefresh }: AdvancedStatsProps) {
   const [periodo, setPeriodo] = useState("hoy")
-  const [stats, setStats] = useState<StatsData>({
-    ventasHoy: 145600, // Solo ventas REALES (pagadas)
-    ventasAyer: 123400,
-    clientesUnicos: 47,
-    horasPico: ["20:00-22:00", "22:00-00:00"],
-    productoMasVendido: {
-      nombre: "Cerveza Artesanal",
-      emoji: "🍺",
-      cantidad: 23,
-    },
-    tiempoPromedio: 12,
-    satisfaccion: 4.7,
-    cancelacionesHoy: 3,
-    montoCancelado: 8400,
-    ventasBrutas: 154000, // Ventas + cancelaciones
-  })
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleRefresh = async () => {
+    setIsLoading(true)
+    await onRefresh()
+    setIsLoading(false)
+  }
 
   const calcularCrecimiento = () => {
-    const crecimiento = ((stats.ventasHoy - stats.ventasAyer) / stats.ventasAyer) * 100
+    const crecimiento = ((stats.ventasHoy - stats.ventasSemana) / stats.ventasSemana) * 100
     return {
       porcentaje: Math.abs(crecimiento).toFixed(1),
       positivo: crecimiento > 0,
     }
   }
 
+  const calcularTasaConversion = () => {
+    if (stats.comandasTotales === 0) return 0
+    return ((stats.comandasTotales - stats.cancelacionesHoy) / stats.comandasTotales * 100).toFixed(1)
+  }
+
+  const calcularPromedioTicket = () => {
+    const ventasNetas = stats.ventasHoy
+    const comandasExitosas = stats.comandasTotales - stats.cancelacionesHoy
+    return comandasExitosas > 0 ? (ventasNetas / comandasExitosas).toFixed(0) : 0
+  }
+
   const crecimiento = calcularCrecimiento()
+  const tasaConversion = calcularTasaConversion()
+  const promedioTicket = calcularPromedioTicket()
+
+  const getVentasByPeriod = () => {
+    switch (periodo) {
+      case "hoy":
+        return stats.ventasHoy
+      case "semana":
+        return stats.ventasSemana
+      case "mes":
+        return stats.ventasMes
+      default:
+        return stats.ventasHoy
+    }
+  }
+
+  const ventasPeriodo = getVentasByPeriod()
 
   return (
     <div className="space-y-6">
@@ -58,20 +81,31 @@ export function AdvancedStats() {
         <h3 className="text-xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">
           Estadísticas Avanzadas
         </h3>
-        <Select value={periodo} onValueChange={setPeriodo}>
-          <SelectTrigger className="w-32">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="hoy">Hoy</SelectItem>
-            <SelectItem value="semana">Semana</SelectItem>
-            <SelectItem value="mes">Mes</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Select value={periodo} onValueChange={setPeriodo}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="hoy">Hoy</SelectItem>
+              <SelectItem value="semana">Semana</SelectItem>
+              <SelectItem value="mes">Mes</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefresh} 
+            disabled={isLoading}
+            className="border-amber-200 text-amber-600 hover:bg-amber-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Ventas con tendencia */}
+        {/* Ventas principales */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2">
@@ -80,7 +114,7 @@ export function AdvancedStats() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-800">${stats.ventasHoy.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-green-800">${ventasPeriodo.toLocaleString()}</div>
             <div className="flex items-center gap-1 text-xs mt-1">
               {crecimiento.positivo ? (
                 <TrendingUp className="w-3 h-3 text-green-600" />
@@ -88,60 +122,59 @@ export function AdvancedStats() {
                 <TrendingDown className="w-3 h-3 text-red-600" />
               )}
               <span className={crecimiento.positivo ? "text-green-600" : "text-red-600"}>
-                {crecimiento.porcentaje}% vs ayer
+                {crecimiento.porcentaje}% vs semana
               </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Clientes únicos */}
+        {/* Comandas totales */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Clientes Únicos
+              Comandas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-800">{stats.clientesUnicos}</div>
-            <div className="text-xs text-blue-600 mt-1">Comandas individuales</div>
-          </CardContent>
-        </Card>
-
-        {/* Producto más vendido */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-pink-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700 flex items-center gap-2">
-              <Music className="w-4 h-4" />
-              Más Popular
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{stats.productoMasVendido.emoji}</span>
-              <div>
-                <div className="font-bold text-purple-800">{stats.productoMasVendido.cantidad}</div>
-                <div className="text-xs text-purple-600">{stats.productoMasVendido.nombre}</div>
-              </div>
+            <div className="text-2xl font-bold text-blue-800">{stats.comandasTotales}</div>
+            <div className="text-xs text-blue-600 mt-1">
+              <Badge variant="outline" className="text-xs border-green-200 text-green-700">
+                {tasaConversion}% éxito
+              </Badge>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tiempo promedio */}
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-yellow-50">
+        {/* Productos vendidos */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-pink-50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-orange-700 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Tiempo Promedio
+            <CardTitle className="text-sm font-medium text-purple-700 flex items-center gap-2">
+              <Music className="w-4 h-4" />
+              Productos
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-800">{stats.tiempoPromedio}min</div>
+            <div className="text-2xl font-bold text-purple-800">{stats.productosVendidos}</div>
+            <div className="text-xs text-purple-600 mt-1">Unidades vendidas</div>
+          </CardContent>
+        </Card>
+
+        {/* Promedio por ticket */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-yellow-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700 flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Ticket Promedio
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-800">${promedioTicket}</div>
             <div className="text-xs text-orange-600 mt-1">Por comanda</div>
           </CardContent>
         </Card>
 
-        {/* Nueva card de cancelaciones */}
+        {/* Cancelaciones */}
         <Card className="border-0 shadow-lg bg-gradient-to-br from-red-50 to-pink-50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-red-700 flex items-center gap-2">
@@ -154,90 +187,138 @@ export function AdvancedStats() {
             <div className="text-xs text-red-600 mt-1">-${stats.montoCancelado.toLocaleString()}</div>
           </CardContent>
         </Card>
+
+        {/* Métodos de pago */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-indigo-50 to-blue-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-indigo-700 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Métodos de Pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-green-600">Efectivo</span>
+                <span className="font-medium">${stats.totalEfectivo.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-blue-600">Transferencia</span>
+                <span className="font-medium">${stats.totalTransferencia.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-purple-600">Invitación</span>
+                <span className="font-medium">${stats.totalInvitacion.toLocaleString()}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tasa de cancelación */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-50 to-orange-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-amber-700 flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Tasa Cancelación
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-800">{stats.tasaCancelacion}%</div>
+            <div className="text-xs text-amber-600 mt-1">De comandas totales</div>
+          </CardContent>
+        </Card>
+
+        {/* Resumen de rendimiento */}
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-50 to-green-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-emerald-700 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              Rendimiento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span>Ventas Netas</span>
+                <span className="font-medium text-green-600">${stats.ventasHoy.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span>Conversión</span>
+                <span className="font-medium text-blue-600">{tasaConversion}%</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span>Promedio</span>
+                <span className="font-medium text-purple-600">${promedioTicket}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Horas pico */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-pink-600" />
-            Horas Pico
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            {stats.horasPico.map((hora, index) => (
-              <div
-                key={index}
-                className="px-3 py-2 bg-gradient-to-r from-pink-100 to-orange-100 rounded-lg border border-pink-200"
-              >
-                <span className="font-medium text-pink-800">{hora}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-gray-600 mt-2">Períodos con mayor actividad de ventas</p>
-        </CardContent>
-      </Card>
-
-      {/* Gráfico de satisfacción */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Music className="w-5 h-5 text-pink-600" />
-            Satisfacción del Cliente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="text-3xl font-bold text-pink-600">{stats.satisfaccion}/5</div>
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <span
-                  key={star}
-                  className={`text-2xl ${star <= Math.floor(stats.satisfaccion) ? "text-yellow-400" : "text-gray-300"}`}
-                >
-                  ⭐
-                </span>
+      {/* Métricas adicionales */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Distribución de métodos de pago */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" />
+              Distribución de Pagos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { label: "Efectivo", amount: stats.totalEfectivo, color: "bg-green-500", percentage: ((stats.totalEfectivo / (stats.totalEfectivo + stats.totalTransferencia + stats.totalInvitacion)) * 100).toFixed(1) },
+                { label: "Transferencia", amount: stats.totalTransferencia, color: "bg-blue-500", percentage: ((stats.totalTransferencia / (stats.totalEfectivo + stats.totalTransferencia + stats.totalInvitacion)) * 100).toFixed(1) },
+                { label: "Invitación", amount: stats.totalInvitacion, color: "bg-purple-500", percentage: ((stats.totalInvitacion / (stats.totalEfectivo + stats.totalTransferencia + stats.totalInvitacion)) * 100).toFixed(1) }
+              ].map((method, index) => (
+                <div key={index} className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{method.label}</span>
+                    <span className="text-gray-600">${method.amount.toLocaleString()} ({method.percentage}%)</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`${method.color} h-2 rounded-full transition-all duration-300`}
+                      style={{ width: `${method.percentage}%` }}
+                    ></div>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-          <p className="text-sm text-gray-600 mt-2">Basado en feedback de clientes</p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Nueva sección de análisis de efectividad */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
-            Análisis de Efectividad
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-800">${stats.ventasHoy.toLocaleString()}</div>
-              <div className="text-sm text-green-600">Ventas Netas</div>
+        {/* Resumen de cancelaciones */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <X className="w-5 h-5 text-red-600" />
+              Análisis de Cancelaciones
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Cancelaciones hoy</span>
+                <Badge variant="destructive">{stats.cancelacionesHoy}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Monto cancelado</span>
+                <span className="text-red-600 font-medium">-${stats.montoCancelado.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Tasa de cancelación</span>
+                <span className="text-amber-600 font-medium">{stats.tasaCancelacion}%</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">Comandas exitosas</span>
+                <span className="text-green-600 font-medium">{stats.comandasTotales - stats.cancelacionesHoy}</span>
+              </div>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-800">${stats.ventasBrutas.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Ventas Brutas</div>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-800">-${stats.montoCancelado.toLocaleString()}</div>
-              <div className="text-sm text-red-600">Cancelaciones</div>
-            </div>
-          </div>
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-blue-700 font-medium">Efectividad de Ventas:</span>
-              <span className="text-blue-800 font-bold">
-                {((stats.ventasHoy / stats.ventasBrutas) * 100).toFixed(1)}%
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

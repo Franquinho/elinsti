@@ -69,7 +69,7 @@ export function AdminSection() {
     setIsLoading(true);
     try {
       const [productosRes, statsRes] = await Promise.all([
-        apiClient.getProductos(),
+        apiClient.getProductosAdmin(),
         apiClient.getStats(),
       ]);
 
@@ -105,7 +105,6 @@ export function AdminSection() {
     }
   }, [toast]);
 
-
   useEffect(() => {
     cargarDatos()
   }, [cargarDatos])
@@ -119,13 +118,20 @@ export function AdminSection() {
       const res = await apiClient.updateProducto(id, { activo: productoActualizado.activo });
       if (res.success) {
         setProductos(productos.map((p) => (p.id === id ? res.producto : p)));
-        toast({ title: "Éxito", description: `Producto ${producto.activo ? 'desactivado' : 'activado'}.` });
+        toast({ 
+          title: "Éxito", 
+          description: `Producto ${producto.activo ? 'desactivado' : 'activado'} correctamente.` 
+        });
       } else {
         throw new Error(res.message);
       }
     } catch (error: any) {
       console.error("Error actualizando producto:", error)
-      toast({ title: "Error", description: `No se pudo actualizar el producto: ${error.message}`, variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: `No se pudo actualizar el producto: ${error.message}`, 
+        variant: "destructive" 
+      });
     }
   }
 
@@ -167,7 +173,7 @@ export function AdminSection() {
         if (!editandoProducto) {
           throw new Error('No se puede actualizar un producto sin seleccionar uno');
         }
-        const res: { success: boolean; message?: string; producto?: Producto } = await apiClient.updateProducto(editandoProducto.id, {
+        res = await apiClient.updateProducto(editandoProducto.id, {
           ...editandoProducto,
           nombre: editandoProducto.nombre.trim(),
           precio: Number(editandoProducto.precio)
@@ -239,49 +245,74 @@ export function AdminSection() {
         <TabsContent value="productos" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-amber-800">Gestión de Productos</h2>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="bg-amber-600 hover:bg-amber-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Nuevo Producto
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Crear Nuevo Producto</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={(e) => handleFormSubmit(e, 'create')} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="nombre">Nombre</Label>
-                    <Input id="nombre" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })} placeholder="Ej: Café con leche" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="precio">Precio</Label>
-                    <Input id="precio" type="number" value={nuevoProducto.precio} onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: parseFloat(e.target.value) || 0 })} placeholder="Ej: 1500" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Emoji</Label>
-                    <div className="grid grid-cols-6 gap-2">
-                      {emojisDisponibles.map((emoji) => (
-                        <Button key={emoji} type="button" variant={nuevoProducto.emoji === emoji ? "default" : "outline"} className="text-2xl" onClick={() => setNuevoProducto({ ...nuevoProducto, emoji })}>
-                          {emoji}
-                        </Button>
-                      ))}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={cargarDatos} 
+                disabled={isLoading}
+                className="border-amber-200 text-amber-600 hover:bg-amber-50"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Refrescar
+              </Button>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-amber-600 hover:bg-amber-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Producto
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Crear Nuevo Producto</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={(e) => handleFormSubmit(e, 'create')} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="nombre">Nombre</Label>
+                      <Input id="nombre" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })} placeholder="Ej: Café con leche" />
                     </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose asChild id="close-create-dialog">
-                        <Button type="button" variant="ghost">Cancelar</Button>
-                    </DialogClose>
-                    <Button type="submit" disabled={isSubmitting} className="bg-amber-600 hover:bg-amber-700">
-                      {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      Crear Producto
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                    <div className="space-y-2">
+                      <Label htmlFor="precio">Precio</Label>
+                      <Input id="precio" type="number" value={nuevoProducto.precio} onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: parseFloat(e.target.value) || 0 })} placeholder="Ej: 1500" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Emoji</Label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {emojisDisponibles.map((emoji) => (
+                          <Button key={emoji} type="button" variant={nuevoProducto.emoji === emoji ? "default" : "outline"} className="text-2xl" onClick={() => setNuevoProducto({ ...nuevoProducto, emoji })}>
+                            {emoji}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild id="close-create-dialog">
+                          <Button type="button" variant="ghost">Cancelar</Button>
+                      </DialogClose>
+                      <Button type="submit" disabled={isSubmitting} className="bg-amber-600 hover:bg-amber-700">
+                        {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Crear Producto
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
+          
+          {/* Resumen de productos */}
+          <div className="flex gap-4 mb-4">
+            <Badge variant="outline" className="border-green-200 text-green-700">
+              Activos: {productos.filter(p => p.activo).length}
+            </Badge>
+            <Badge variant="outline" className="border-red-200 text-red-700">
+              Inactivos: {productos.filter(p => !p.activo).length}
+            </Badge>
+            <Badge variant="outline" className="border-blue-200 text-blue-700">
+              Total: {productos.length}
+            </Badge>
+          </div>
+
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -296,13 +327,23 @@ export function AdminSection() {
                   </thead>
                   <tbody>
                     {productos.map((producto) => (
-                      <tr key={producto.id} className="border-b">
+                      <tr key={producto.id} className={`border-b ${!producto.activo ? 'bg-gray-50' : ''}`}>
                         <td className="p-4">
-                          <Switch checked={producto.activo} onCheckedChange={() => toggleProductoActivo(producto.id)} />
+                          <Switch 
+                            checked={producto.activo} 
+                            onCheckedChange={() => toggleProductoActivo(producto.id)} 
+                          />
                         </td>
                         <td className="p-4 font-medium flex items-center">
                           <span className="text-2xl mr-4">{producto.emoji}</span>
-                          {producto.nombre}
+                          <span className={!producto.activo ? 'text-gray-500' : ''}>
+                            {producto.nombre}
+                          </span>
+                          {!producto.activo && (
+                            <Badge variant="secondary" className="ml-2 text-xs">
+                              Inactivo
+                            </Badge>
+                          )}
                         </td>
                         <td className="p-4 text-right font-mono">${producto.precio.toFixed(2)}</td>
                         <td className="p-4 flex justify-center items-center space-x-2">
@@ -392,17 +433,30 @@ export function AdminSection() {
            <AdvancedStats stats={estadisticas} onRefresh={cargarDatos} />
         </TabsContent>
 
-        <TabsContent value="configuracion" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuración General</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600">
-                    Ajustes futuros de la aplicación se configurarán aquí.
+        <TabsContent value="configuracion">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-amber-800">Configuración General</h2>
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Gestión de Eventos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600 mb-4">
+                  Aquí podrás gestionar todos los eventos y ver estadísticas detalladas de ventas.
                 </p>
-            </CardContent>
-          </Card>
+                <div className="text-center py-8">
+                  <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Funcionalidad en desarrollo</p>
+                  <p className="text-sm text-gray-400">Próximamente: Gestión completa de eventos</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
