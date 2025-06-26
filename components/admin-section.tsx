@@ -9,18 +9,13 @@ import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Settings, Download, Plus, Edit, Trash2, RefreshCw, Loader2 } from "lucide-react"
+import { Settings, Download, Plus, Edit, Trash2, RefreshCw, Loader2, Calendar, MapPin, Users, DollarSign, Star, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import { AdvancedStats } from "./advanced-stats"
+import { EventSelector } from "./event-selector"
 import { apiClient } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
-
-interface Producto {
-  id: number
-  nombre: string
-  precio: number
-  emoji: string
-  activo: boolean
-}
+import { Producto, Evento, EventoCreate } from "@/lib/types"
+import { EventManagement } from "./event-management"
 
 interface Estadistica {
   ventasHoy: number
@@ -52,11 +47,22 @@ const initialStats: Estadistica = {
 
 export function AdminSection() {
   const [productos, setProductos] = useState<Producto[]>([])
+  const [eventos, setEventos] = useState<Evento[]>([])
   const [estadisticas, setEstadisticas] = useState<Estadistica>(initialStats)
   const [nuevoProducto, setNuevoProducto] = useState({
     nombre: "",
     precio: 0,
     emoji: "📦",
+  })
+  const [nuevoEvento, setNuevoEvento] = useState<EventoCreate>({
+    nombre: "",
+    descripcion: "",
+    fecha_inicio: "",
+    fecha_fin: "",
+    capacidad_maxima: undefined,
+    precio_entrada: 0,
+    ubicacion: "",
+    imagen_url: ""
   })
   const [editandoProducto, setEditandoProducto] = useState<Producto | null>(null)
   const [isLoading, setIsLoading] = useState(true);
@@ -68,8 +74,9 @@ export function AdminSection() {
   const cargarDatos = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [productosRes, statsRes] = await Promise.all([
+      const [productosRes, eventosRes, statsRes] = await Promise.all([
         apiClient.getProductosAdmin(),
+        apiClient.getEventos(),
         apiClient.getStats(),
       ]);
 
@@ -83,6 +90,10 @@ export function AdminSection() {
         return;
       }
       setProductos(productosRes.productos || []);
+
+      if (eventosRes.success) {
+        setEventos(eventosRes.eventos || []);
+      }
 
       if (!statsRes.success) {
         console.error("Error al cargar estadísticas:", statsRes.message);
@@ -203,6 +214,61 @@ export function AdminSection() {
     }
   };
 
+  const handleEventoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      // Validaciones
+      if (!nuevoEvento.nombre?.trim()) {
+        throw new Error('El nombre del evento es requerido');
+      }
+
+      if (!nuevoEvento.fecha_inicio || !nuevoEvento.fecha_fin) {
+        throw new Error('Las fechas de inicio y fin son requeridas');
+      }
+
+      if (new Date(nuevoEvento.fecha_inicio) >= new Date(nuevoEvento.fecha_fin)) {
+        throw new Error('La fecha de fin debe ser posterior a la fecha de inicio');
+      }
+
+      const res = await apiClient.createEvento({
+        ...nuevoEvento,
+        nombre: nuevoEvento.nombre.trim(),
+        descripcion: nuevoEvento.descripcion?.trim(),
+        ubicacion: nuevoEvento.ubicacion?.trim(),
+        imagen_url: nuevoEvento.imagen_url?.trim()
+      });
+
+      if (res.success) {
+        setEventos([...eventos, res.evento]);
+        setNuevoEvento({
+          nombre: "",
+          descripcion: "",
+          fecha_inicio: "",
+          fecha_fin: "",
+          capacidad_maxima: undefined,
+          precio_entrada: 0,
+          ubicacion: "",
+          imagen_url: ""
+        });
+        toast({ title: "Éxito", description: "Evento creado correctamente." });
+        document.getElementById('close-evento-dialog')?.click();
+      } else {
+        throw new Error(res.message);
+      }
+    } catch (error: any) {
+      console.error("Error creando evento:", error);
+      toast({ 
+        title: "Error", 
+        description: `No se pudo crear el evento: ${error.message}`, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const eliminarProducto = async (id: number) => {
     try {
       if (!confirm("¿Estás seguro de eliminar este producto? Esta acción no se puede deshacer.")) {
@@ -242,6 +308,7 @@ export function AdminSection() {
           <TabsTrigger value="estadisticas">Estadísticas</TabsTrigger>
           <TabsTrigger value="configuracion">Configuración</TabsTrigger>
         </TabsList>
+        
         <TabsContent value="productos" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-amber-800">Gestión de Productos</h2>
@@ -434,26 +501,147 @@ export function AdminSection() {
         </TabsContent>
 
         <TabsContent value="configuracion">
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-amber-800">Configuración General</h2>
             </div>
+
+            {/* Gestión de Eventos */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
+                  <Calendar className="w-5 h-5" />
                   Gestión de Eventos
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 mb-4">
-                  Aquí podrás gestionar todos los eventos y ver estadísticas detalladas de ventas.
-                </p>
-                <div className="text-center py-8">
-                  <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Funcionalidad en desarrollo</p>
-                  <p className="text-sm text-gray-400">Próximamente: Gestión completa de eventos</p>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-gray-600">
+                    Gestiona todos los eventos y configura el evento activo del sistema.
+                  </p>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="bg-amber-600 hover:bg-amber-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nuevo Evento
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Crear Nuevo Evento</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleEventoSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="evento-nombre">Nombre del Evento *</Label>
+                            <Input 
+                              id="evento-nombre" 
+                              value={nuevoEvento.nombre} 
+                              onChange={(e) => setNuevoEvento({ ...nuevoEvento, nombre: e.target.value })} 
+                              placeholder="Ej: Noche de Jazz" 
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="evento-ubicacion">Ubicación</Label>
+                            <Input 
+                              id="evento-ubicacion" 
+                              value={nuevoEvento.ubicacion} 
+                              onChange={(e) => setNuevoEvento({ ...nuevoEvento, ubicacion: e.target.value })} 
+                              placeholder="Ej: Sala Principal" 
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="evento-descripcion">Descripción</Label>
+                          <Input 
+                            id="evento-descripcion" 
+                            value={nuevoEvento.descripcion} 
+                            onChange={(e) => setNuevoEvento({ ...nuevoEvento, descripcion: e.target.value })} 
+                            placeholder="Descripción del evento..." 
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="evento-inicio">Fecha y Hora de Inicio *</Label>
+                            <Input 
+                              id="evento-inicio" 
+                              type="datetime-local" 
+                              value={nuevoEvento.fecha_inicio} 
+                              onChange={(e) => setNuevoEvento({ ...nuevoEvento, fecha_inicio: e.target.value })} 
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="evento-fin">Fecha y Hora de Fin *</Label>
+                            <Input 
+                              id="evento-fin" 
+                              type="datetime-local" 
+                              value={nuevoEvento.fecha_fin} 
+                              onChange={(e) => setNuevoEvento({ ...nuevoEvento, fecha_fin: e.target.value })} 
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="evento-capacidad">Capacidad Máxima</Label>
+                            <Input 
+                              id="evento-capacidad" 
+                              type="number" 
+                              value={nuevoEvento.capacidad_maxima || ''} 
+                              onChange={(e) => setNuevoEvento({ ...nuevoEvento, capacidad_maxima: e.target.value ? parseInt(e.target.value) : undefined })} 
+                              placeholder="Ej: 100" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="evento-precio">Precio de Entrada</Label>
+                            <Input 
+                              id="evento-precio" 
+                              type="number" 
+                              step="0.01"
+                              value={nuevoEvento.precio_entrada} 
+                              onChange={(e) => setNuevoEvento({ ...nuevoEvento, precio_entrada: parseFloat(e.target.value) || 0 })} 
+                              placeholder="Ej: 25.00" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="evento-imagen">URL de Imagen</Label>
+                          <Input 
+                            id="evento-imagen" 
+                            value={nuevoEvento.imagen_url} 
+                            onChange={(e) => setNuevoEvento({ ...nuevoEvento, imagen_url: e.target.value })} 
+                            placeholder="https://ejemplo.com/imagen.jpg" 
+                          />
+                        </div>
+
+                        <DialogFooter>
+                          <DialogClose asChild id="close-evento-dialog">
+                            <Button type="button" variant="ghost" disabled={isSubmitting}>
+                              Cancelar
+                            </Button>
+                          </DialogClose>
+                          <Button 
+                            type="submit" 
+                            disabled={isSubmitting} 
+                            className="bg-amber-600 hover:bg-amber-700"
+                          >
+                            {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Crear Evento
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </div>
+
+                {/* Selector de eventos */}
+                <EventSelector showStats={true} />
               </CardContent>
             </Card>
           </div>

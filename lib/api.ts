@@ -122,3 +122,6 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient()
+
+// Alias para compatibilidad
+export const api = apiClient

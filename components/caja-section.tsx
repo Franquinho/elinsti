@@ -1,438 +1,529 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { CreditCard, X, Check, RefreshCw, Clock } from "lucide-react"
-import { localDB } from "@/lib/database"
-import { PrintComanda } from "@/components/print-comanda"
-import { useNotifications, NotificationSystem } from "@/components/notification-system"
-import { apiClient } from "@/lib/api"
-import { useComandasSync } from "@/hooks/use-comandas-sync"
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  DollarSign, 
+  CreditCard, 
+  Banknote, 
+  Gift, 
+  Plus, 
+  Search, 
+  Filter,
+  RefreshCw,
+  Printer,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock
+} from 'lucide-react';
+import { api } from '../lib/api';
+import { useToast } from '../hooks/use-toast';
+import { useOfflineSync } from '../hooks/use-offline-sync';
+import { OfflineIndicator } from './offline-indicator';
+import { cn } from '../lib/utils';
 
 interface Comanda {
-  id: number
-  usuario_id: number
-  nombre_cliente?: string
-  items: Array<{
-    cantidad: number
-    precio_unitario: number
-    producto: {
-      nombre: string
-      emoji: string
-    }
-  }>
-  total: number
-  estado: "pendiente" | "pagado" | "cancelado"
-  metodo_pago?: string
-  nota?: string
-  fecha_creacion: string
-  usuario?: { nombre: string }
+  id: string;
+  usuario_id: number;
+  evento_id: number;
+  total: number;
+  nombre_cliente: string;
+  productos: Array<{
+    id: number;
+    nombre: string;
+    cantidad: number;
+    precio: number;
+  }>;
+  estado: 'pendiente' | 'pagado' | 'cancelado';
+  metodo_pago?: 'efectivo' | 'transferencia' | 'invitacion';
+  nota?: string;
+  fecha_creacion: string;
+}
+
+interface CajaStats {
+  totalVentas: number;
+  totalComandas: number;
+  comandasPendientes: number;
+  comandasPagadas: number;
+  comandasCanceladas: number;
+  efectivo: number;
+  transferencia: number;
+  invitacion: number;
 }
 
 export function CajaSection() {
-  const { comandas, loading, error, refreshComandas, lastUpdate } = useComandasSync(3000) // Sincronizar cada 3 segundos
-  const [cajaAbierta, setCajaAbierta] = useState(true)
-  const [montoInicial, setMontoInicial] = useState(0)
-  const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null)
-  const [metodoPago, setMetodoPago] = useState("")
-  const [nota, setNota] = useState("")
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'todos' | 'pendiente' | 'pagado' | 'cancelado'>('todos');
+  const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia' | 'invitacion'>('efectivo');
+  const [paymentNote, setPaymentNote] = useState('');
 
-  const { notifications, addNotification, removeNotification } = useNotifications()
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { createOfflineComanda, processOfflinePayment, syncStatus } = useOfflineSync();
 
-  const getEstadoColor = (estado: string) => {
-    switch (estado) {
-      case "pendiente":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      case "pagado":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "cancelado":
-        return "bg-red-100 text-red-800 border-red-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
+  // Query para obtener comandas
+  const { data: comandas = [], isLoading: isLoadingComandas } = useQuery({
+    queryKey: ['comandas'],
+    queryFn: api.getComandas,
+    refetchInterval: 5000
+  });
 
-  const getMetodoPagoIcon = (metodo: string) => {
-    switch (metodo) {
-      case "invitacion":
-        return "🟣"
-      case "transferencia":
-        return "🔵"
-      case "efectivo":
-        return "🟢"
-      case "revisar":
-        return "🟠"
-      default:
-        return "💳"
-    }
-  }
+  // Query para obtener estadísticas
+  const { data: stats } = useQuery({
+    queryKey: ['stats'],
+    queryFn: api.getStats
+  });
 
-  const procesarPago = async (comanda: Comanda, metodo: string, nota?: string) => {
-    try {
-      const response = await apiClient.updateComandaStatus(comanda.id, "pagado", metodo, nota)
+  // Query para obtener evento activo
+  const { data: activeEvent } = useQuery({
+    queryKey: ['active-event'],
+    queryFn: api.getEventoActivo
+  });
 
-      if (response.success) {
-        setSelectedComanda(null)
-        setMetodoPago("")
-        setNota("")
-        await refreshComandas() // Refrescar comandas después del pago
-        addNotification({
-          type: "music",
-          title: "¡Pago Procesado!",
-          message: `Comanda #${comanda.id} pagada exitosamente`,
-        })
+  // Mutación para crear comanda
+  const createComanda = useMutation({
+    mutationFn: async (comandaData: any) => {
+      if (syncStatus.isOnline) {
+        return api.createComanda(comandaData);
       } else {
-        throw new Error("No se pudo procesar el pago")
+        return createOfflineComanda.mutateAsync(comandaData);
       }
-    } catch (error) {
-      console.error("Error procesando pago:", error)
-      addNotification({
-        type: "error",
-        title: "Error",
-        message: "No se pudo procesar el pago",
-      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comandas'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      toast({
+        title: "🟢 Comanda creada",
+        description: syncStatus.isOnline ? "Comanda creada exitosamente" : "Comanda guardada offline",
+        duration: 3000
+      });
+    },
+    onError: (error) => {
+      console.error('Error creando comanda:', error);
+      toast({
+        title: "🔴 Error",
+        description: "No se pudo crear la comanda",
+        duration: 5000
+      });
     }
-  }
+  });
 
-  const cancelarComanda = async (comanda: Comanda) => {
-    if (
-      confirm(
-        `¿Estás seguro de cancelar la comanda #${comanda.id}? El monto de $${comanda.total.toLocaleString()} NO se contabilizará en las ventas.`,
-      )
-    ) {
-      try {
-        const response = await apiClient.updateComandaStatus(comanda.id, "cancelado")
-
-        if (response.success) {
-          await refreshComandas() // Refrescar comandas después de cancelar
-          addNotification({
-            type: "error",
-            title: "Comanda Cancelada",
-            message: `Comanda #${comanda.id} - ${comanda.nombre_cliente || "Cliente"} cancelada. Monto: $${comanda.total.toLocaleString()}`,
-            duration: 5000,
-          })
-        } else {
-          throw new Error("No se pudo cancelar la comanda")
-        }
-      } catch (error) {
-        console.error("Error cancelando comanda:", error)
-        addNotification({
-          type: "error",
-          title: "Error",
-          message: "No se pudo cancelar la comanda",
-        })
+  // Mutación para procesar pago
+  const processPayment = useMutation({
+    mutationFn: async ({ comandaId, paymentData }: { comandaId: string; paymentData: any }) => {
+      if (syncStatus.isOnline) {
+        return api.updateComandaStatus(comandaId, paymentData.estado, paymentData.metodo_pago, paymentData.nota);
+      } else {
+        return processOfflinePayment.mutateAsync({
+          comanda_id: comandaId,
+          estado: 'pagado',
+          metodo_pago: paymentData.metodo_pago,
+          monto: paymentData.total,
+          nota: paymentData.nota
+        });
       }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comandas'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setIsProcessingPayment(false);
+      setSelectedComanda(null);
+      setPaymentNote('');
+      toast({
+        title: "🟢 Pago procesado",
+        description: syncStatus.isOnline ? "Pago procesado exitosamente" : "Pago guardado offline",
+        duration: 3000
+      });
+    },
+    onError: (error) => {
+      console.error('Error procesando pago:', error);
+      setIsProcessingPayment(false);
+      toast({
+        title: "🔴 Error",
+        description: "No se pudo procesar el pago",
+        duration: 5000
+      });
     }
-  }
+  });
 
-  const abrirCaja = () => {
-    setCajaAbierta(true)
-  }
+  // Filtrar comandas
+  const filteredComandas = comandas.filter((comanda: Comanda) => {
+    const matchesSearch = comanda.nombre_cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         comanda.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === 'todos' || comanda.estado === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
-  const cerrarCaja = () => {
-    setCajaAbierta(false)
-  }
+  // Calcular estadísticas de caja
+  const cajaStats: CajaStats = {
+    totalVentas: comandas
+      .filter((c: Comanda) => c.estado === 'pagado')
+      .reduce((sum: number, c: Comanda) => sum + c.total, 0),
+    totalComandas: comandas.length,
+    comandasPendientes: comandas.filter((c: Comanda) => c.estado === 'pendiente').length,
+    comandasPagadas: comandas.filter((c: Comanda) => c.estado === 'pagado').length,
+    comandasCanceladas: comandas.filter((c: Comanda) => c.estado === 'cancelado').length,
+    efectivo: comandas
+      .filter((c: Comanda) => c.estado === 'pagado' && c.metodo_pago === 'efectivo')
+      .reduce((sum: number, c: Comanda) => sum + c.total, 0),
+    transferencia: comandas
+      .filter((c: Comanda) => c.estado === 'pagado' && c.metodo_pago === 'transferencia')
+      .reduce((sum: number, c: Comanda) => sum + c.total, 0),
+    invitacion: comandas
+      .filter((c: Comanda) => c.estado === 'pagado' && c.metodo_pago === 'invitacion')
+      .reduce((sum: number, c: Comanda) => sum + c.total, 0)
+  };
+
+  const handleProcessPayment = () => {
+    if (!selectedComanda) return;
+
+    setIsProcessingPayment(true);
+    processPayment.mutate({
+      comandaId: selectedComanda.id,
+      paymentData: {
+        estado: 'pagado',
+        metodo_pago: paymentMethod,
+        nota: paymentNote
+      }
+    });
+  };
+
+  const getStatusBadge = (estado: string) => {
+    switch (estado) {
+      case 'pendiente':
+        return <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white">Pendiente</Badge>;
+      case 'pagado':
+        return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Pagado</Badge>;
+      case 'cancelado':
+        return <Badge variant="destructive">Cancelado</Badge>;
+      default:
+        return <Badge variant="outline">{estado}</Badge>;
+    }
+  };
+
+  const getPaymentMethodIcon = (metodo?: string) => {
+    switch (metodo) {
+      case 'efectivo':
+        return <Banknote className="w-4 h-4" />;
+      case 'transferencia':
+        return <CreditCard className="w-4 h-4" />;
+      case 'invitacion':
+        return <Gift className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Control de Caja */}
+      {/* Header con indicador offline */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Caja</h2>
+          <p className="text-muted-foreground">
+            Gestiona comandas y pagos {activeEvent && `- ${activeEvent.nombre}`}
+          </p>
+        </div>
+        <OfflineIndicator />
+      </div>
+
+      {/* Estadísticas rápidas */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Ventas</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${cajaStats.totalVentas.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              {cajaStats.comandasPagadas} comandas pagadas
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Comandas Pendientes</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{cajaStats.comandasPendientes}</div>
+            <p className="text-xs text-muted-foreground">
+              de {cajaStats.totalComandas} total
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Efectivo</CardTitle>
+            <Banknote className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${cajaStats.efectivo.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Pagos en efectivo
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Transferencias</CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${cajaStats.transferencia.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Pagos por transferencia
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gestión de comandas */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="w-5 h-5" />
-            Control de Caja
-          </CardTitle>
+          <CardTitle>Gestión de Comandas</CardTitle>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por cliente o ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="pendiente">Pendientes</SelectItem>
+                <SelectItem value="pagado">Pagados</SelectItem>
+                <SelectItem value="cancelado">Cancelados</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Estado de la caja:</p>
-              <Badge className={cajaAbierta ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
-                {cajaAbierta ? "Abierta" : "Cerrada"}
-              </Badge>
+          {isLoadingComandas ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin" />
+              <span className="ml-2">Cargando comandas...</span>
             </div>
-            <div className="flex gap-2">
-              {!cajaAbierta ? (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button className="bg-green-600 hover:bg-green-700">Abrir Caja</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Abrir Caja</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="monto-inicial">Monto Inicial</Label>
-                        <Input
-                          id="monto-inicial"
-                          type="number"
-                          value={montoInicial}
-                          onChange={(e) => setMontoInicial(Number(e.target.value))}
-                          placeholder="0"
-                        />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Método Pago</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredComandas.map((comanda: Comanda) => (
+                  <TableRow key={comanda.id}>
+                    <TableCell className="font-mono text-sm">{comanda.id}</TableCell>
+                    <TableCell>{comanda.nombre_cliente}</TableCell>
+                    <TableCell className="font-medium">${comanda.total.toFixed(2)}</TableCell>
+                    <TableCell>{getStatusBadge(comanda.estado)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {getPaymentMethodIcon(comanda.metodo_pago)}
+                        <span className="text-sm capitalize">
+                          {comanda.metodo_pago || 'Pendiente'}
+                        </span>
                       </div>
-                      <Button onClick={abrirCaja} className="w-full">
-                        Confirmar Apertura
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ) : (
-                <Button onClick={cerrarCaja} variant="outline" className="border-red-200 text-red-600 hover:bg-red-50">
-                  Cerrar Caja
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Lista de Comandas */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-amber-800">Comandas</h2>
-          <div className="flex items-center gap-3">
-            {error && (
-              <Badge variant="destructive" className="text-xs">
-                Error de sincronización
-              </Badge>
-            )}
-            {lastUpdate && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <Clock className="w-3 h-3" />
-                <span>
-                  Última actualización: {lastUpdate.toLocaleTimeString('es-ES')}
-                </span>
-              </div>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={refreshComandas}
-              disabled={loading}
-              className="flex items-center gap-1"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-              Refrescar
-            </Button>
-          </div>
-        </div>
-        
-        {loading && comandas.length === 0 && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-amber-600" />
-              <p className="text-gray-600">Cargando comandas...</p>
-            </div>
-          </div>
-        )}
-        
-        {error && comandas.length === 0 && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="p-6 text-center">
-              <p className="text-red-800 mb-2">Error al cargar comandas</p>
-              <Button size="sm" onClick={refreshComandas}>
-                Reintentar
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-        
-        <div className="grid gap-4">
-          {comandas.map((comanda) => (
-            <Card key={comanda.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Badge className={getEstadoColor(comanda.estado)}>{comanda.estado.toUpperCase()}</Badge>
-                      <span className="text-xs text-gray-500">
-                        {new Date(comanda.fecha_creacion).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
-                      </span>
-                      <span className="text-sm text-gray-600">Comanda #{comanda.id}</span>
-                      {comanda.nombre_cliente && (
-                        <span className="text-sm font-medium text-pink-600 bg-pink-50 px-2 py-1 rounded">
-                          👤 {comanda.nombre_cliente}
-                        </span>
-                      )}
-                      {comanda.metodo_pago && (
-                        <span className="text-sm">
-                          {getMetodoPagoIcon(comanda.metodo_pago)} {comanda.metodo_pago}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-2 mb-3">
-                      {comanda.items?.map((item, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm">
-                          <span>{item.producto.emoji}</span>
-                          <span>
-                            {item.cantidad}x {item.producto.nombre}
-                          </span>
-                          <span className="text-gray-600">
-                            ${(item.precio_unitario * item.cantidad).toLocaleString()}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center justify-between mt-4">
-                      <span className="font-bold text-lg text-amber-800">Total: ${comanda.total.toLocaleString()}</span>
-                      
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(comanda.fecha_creacion).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        {/* Botón Pagar: solo para pendientes */}
-                        {comanda.estado === 'pendiente' && (
-                          <Dialog open={selectedComanda?.id === comanda.id} onOpenChange={(isOpen) => !isOpen && setSelectedComanda(null)}>
-                            <DialogTrigger asChild>
-                              <Button size="sm" onClick={() => setSelectedComanda(comanda)}>Pagar</Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                              <DialogHeader className="space-y-3">
-                                <DialogTitle className="text-xl font-semibold text-gray-900">
-                                  Procesar Pago
-                                </DialogTitle>
-                                <div className="text-sm text-gray-600">
-                                  Comanda #{comanda.id} • {comanda.nombre_cliente || "Cliente"}
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Detalles de Comanda - {comanda.id}</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label>Cliente</Label>
+                                  <p className="text-sm font-medium">{comanda.nombre_cliente}</p>
                                 </div>
-                              </DialogHeader>
-                              
-                              <div className="space-y-6">
-                                {/* Resumen de la comanda */}
-                                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                                  <h4 className="font-medium text-gray-900">Resumen de la comanda</h4>
-                                  <div className="space-y-2">
-                                    {comanda.items?.map((item, index) => (
-                                      <div key={index} className="flex justify-between items-center text-sm">
-                                        <div className="flex items-center gap-2">
-                                          <span>{item.producto.emoji}</span>
-                                          <span>{item.cantidad}x {item.producto.nombre}</span>
-                                        </div>
-                                        <span className="text-gray-600">
-                                          ${(item.precio_unitario * item.cantidad).toLocaleString()}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <div className="border-t pt-3">
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-semibold text-lg">Total a pagar:</span>
-                                      <span className="font-bold text-xl text-amber-800">
-                                        ${comanda.total.toLocaleString()}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Método de pago */}
-                                <div className="space-y-3">
-                                  <Label className="text-sm font-medium text-gray-900">Método de Pago</Label>
-                                  <Select value={metodoPago} onValueChange={setMetodoPago}>
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Seleccionar método de pago" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="invitacion">🟣 Invitación</SelectItem>
-                                      <SelectItem value="transferencia">🔵 Transferencia</SelectItem>
-                                      <SelectItem value="efectivo">🟢 Efectivo</SelectItem>
-                                      <SelectItem value="revisar">🟠 Revisar</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                {/* Nota para método "revisar" */}
-                                {metodoPago === "revisar" && (
-                                  <div className="space-y-3">
-                                    <Label htmlFor="nota" className="text-sm font-medium text-gray-900">
-                                      Nota adicional
-                                    </Label>
-                                    <Textarea
-                                      id="nota"
-                                      value={nota}
-                                      onChange={(e) => setNota(e.target.value)}
-                                      placeholder="Agregar nota sobre el pago..."
-                                      className="resize-none"
-                                      rows={3}
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Botones de acción */}
-                                <div className="flex gap-3 pt-2">
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                      setSelectedComanda(null)
-                                      setMetodoPago("")
-                                      setNota("")
-                                    }}
-                                    className="flex-1"
-                                  >
-                                    Cancelar
-                                  </Button>
-                                  <Button
-                                    onClick={() => procesarPago(comanda, metodoPago, nota)}
-                                    disabled={!metodoPago}
-                                    className="flex-1 bg-green-600 hover:bg-green-700"
-                                  >
-                                    <Check className="w-4 h-4 mr-2" />
-                                    Confirmar Pago
-                                  </Button>
+                                <div>
+                                  <Label>Total</Label>
+                                  <p className="text-sm font-medium">${comanda.total.toFixed(2)}</p>
                                 </div>
                               </div>
-                            </DialogContent>
-                          </Dialog>
-                        )}
-                        
-                        {/* Botón Cancelar: para pendientes y pagadas */}
-                        {(comanda.estado === 'pendiente' || comanda.estado === 'pagado') && (
-                           <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => cancelarComanda(comanda)}
-                            title="Cancelar Comanda"
-                          >
-                            <X className="w-4 h-4" />
+                              
+                              <div>
+                                <Label>Productos</Label>
+                                <div className="mt-2 space-y-2">
+                                  {comanda.productos.map((producto, index) => (
+                                    <div key={index} className="flex justify-between items-center p-2 bg-muted rounded">
+                                      <span className="text-sm">{producto.nombre}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                          {producto.cantidad}x
+                                        </span>
+                                        <span className="text-sm font-medium">
+                                          ${producto.precio.toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {comanda.nota && (
+                                <div>
+                                  <Label>Nota</Label>
+                                  <p className="text-sm text-muted-foreground">{comanda.nota}</p>
+                                </div>
+                              )}
+
+                              {comanda.estado === 'pendiente' && (
+                                <div className="pt-4 border-t">
+                                  <Button 
+                                    onClick={() => setSelectedComanda(comanda)}
+                                    className="w-full"
+                                  >
+                                    Procesar Pago
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+
+                        {comanda.estado === 'pagado' && (
+                          <Button variant="outline" size="sm">
+                            <Printer className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de procesamiento de pago */}
+      <Dialog open={!!selectedComanda} onOpenChange={() => setSelectedComanda(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Procesar Pago - {selectedComanda?.id}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Cliente</Label>
+                <p className="text-sm font-medium">{selectedComanda?.nombre_cliente}</p>
+              </div>
+              <div>
+                <Label>Total</Label>
+                <p className="text-sm font-medium">${selectedComanda?.total.toFixed(2)}</p>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="payment-method">Método de Pago</Label>
+              <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="efectivo">
+                    <div className="flex items-center gap-2">
+                      <Banknote className="h-4 w-4" />
+                      Efectivo
                     </div>
+                  </SelectItem>
+                  <SelectItem value="transferencia">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Transferencia
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="invitacion">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4" />
+                      Invitación
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                    {comanda.nota && (
-                      <div className="mt-2 p-2 bg-orange-50 rounded text-sm">
-                        <strong>Nota:</strong> {comanda.nota}
-                      </div>
-                    )}
+            <div>
+              <Label htmlFor="payment-note">Nota (opcional)</Label>
+              <Textarea
+                id="payment-note"
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="Nota adicional sobre el pago..."
+              />
+            </div>
 
-                    {comanda.estado === "cancelado" && (
-                      <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-sm">
-                        <div className="flex items-center gap-2">
-                          <X className="w-4 h-4 text-red-600" />
-                          <span className="font-medium text-red-800">
-                            CANCELADA - Monto no contabilizado: ${comanda.total.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex gap-2 ml-4">
-                    {comanda.estado === "pagado" && <PrintComanda comanda={comanda} />}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-      <NotificationSystem notifications={notifications} onRemove={removeNotification} />
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={handleProcessPayment}
+                disabled={isProcessingPayment}
+                className="flex-1"
+              >
+                {isProcessingPayment ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Confirmar Pago
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedComanda(null)}
+                disabled={isProcessingPayment}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }
