@@ -28,7 +28,19 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
     window.addEventListener("offline", handleOffline)
 
     setIsOnline(navigator.onLine)
-    setHasOfflineData(offlineStorage.hasOfflineData())
+    
+    // Verificar datos offline de forma asíncrona
+    const checkOfflineData = async () => {
+      try {
+        const hasData = await offlineStorage.hasOfflineData()
+        setHasOfflineData(hasData)
+      } catch (error) {
+        console.error('Error verificando datos offline:', error)
+        setHasOfflineData(false)
+      }
+    }
+    
+    checkOfflineData()
 
     return () => {
       window.removeEventListener("online", handleOnline)

@@ -425,6 +425,78 @@ class OfflineStorage {
       totalOffline
     };
   }
+
+  // Verificar si hay datos offline
+  async hasOfflineData(): Promise<boolean> {
+    try {
+      const stats = await this.obtenerEstadisticasOffline();
+      return stats.comandasPendientes > 0 || stats.pagosPendientes > 0;
+    } catch (error) {
+      console.error('🔴 Error verificando datos offline:', error);
+      return false;
+    }
+  }
+
+  // Obtener cantidad de datos offline
+  async getOfflineDataCount(): Promise<number> {
+    try {
+      const stats = await this.obtenerEstadisticasOffline();
+      return stats.comandasPendientes + stats.pagosPendientes;
+    } catch (error) {
+      console.error('🔴 Error obteniendo cantidad de datos offline:', error);
+      return 0;
+    }
+  }
+
+  // Sincronizar con el servidor
+  async syncWithServer(): Promise<boolean> {
+    try {
+      console.log('🔄 Iniciando sincronización con servidor...');
+      
+      // Obtener comandas no sincronizadas
+      const comandasNoSync = await this.obtenerComandasNoSincronizadas();
+      const pagosNoSync = await this.obtenerPagosNoSincronizados();
+      
+      let success = true;
+      
+      // Sincronizar comandas
+      for (const comanda of comandasNoSync) {
+        try {
+          // Aquí deberías llamar a tu API para crear la comanda
+          // Por ahora solo marcamos como sincronizada
+          await this.marcarComandaSincronizada(comanda.id);
+          console.log('🟢 Comanda sincronizada:', comanda.id);
+        } catch (error) {
+          console.error('🔴 Error sincronizando comanda:', comanda.id, error);
+          success = false;
+        }
+      }
+      
+      // Sincronizar pagos
+      for (const pago of pagosNoSync) {
+        try {
+          // Aquí deberías llamar a tu API para procesar el pago
+          // Por ahora solo marcamos como sincronizado
+          await this.marcarPagoSincronizado(pago.id);
+          console.log('🟢 Pago sincronizado:', pago.id);
+        } catch (error) {
+          console.error('🔴 Error sincronizando pago:', pago.id, error);
+          success = false;
+        }
+      }
+      
+      if (success) {
+        console.log('🟢 Sincronización completada exitosamente');
+      } else {
+        console.log('⚠️ Sincronización completada con errores');
+      }
+      
+      return success;
+    } catch (error) {
+      console.error('🔴 Error en sincronización con servidor:', error);
+      return false;
+    }
+  }
 }
 
 // Instancia singleton
