@@ -15,6 +15,15 @@ CREATE TABLE IF NOT EXISTS eventos (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Asegurar que la columna activo existe (para migraciones)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'eventos' AND column_name = 'activo') THEN
+        ALTER TABLE eventos ADD COLUMN activo BOOLEAN DEFAULT true;
+    END IF;
+END $$;
+
 -- Tabla para tracking de evento activo
 CREATE TABLE IF NOT EXISTS configuracion_sistema (
     id SERIAL PRIMARY KEY,
@@ -31,7 +40,13 @@ VALUES ('evento_activo_id', '1', 'ID del evento actualmente activo en el sistema
 ON CONFLICT (clave) DO NOTHING;
 
 -- Modificar tabla comandas para incluir evento_id (si no existe)
--- ALTER TABLE comandas ADD COLUMN IF NOT EXISTS evento_id INTEGER REFERENCES eventos(id);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name = 'comandas' AND column_name = 'evento_id') THEN
+        ALTER TABLE comandas ADD COLUMN evento_id INTEGER REFERENCES eventos(id);
+    END IF;
+END $$;
 
 -- Crear índices para optimización
 CREATE INDEX IF NOT EXISTS idx_eventos_activo ON eventos(activo);

@@ -234,9 +234,11 @@ class OfflineStorage {
     const index = store.index('sincronizado');
     
     return new Promise((resolve, reject) => {
-      const request = index.getAll(false);
+      const request = index.getAll();
       request.onsuccess = () => {
-        resolve(request.result || []);
+        // Filtrar solo los no sincronizados
+        const pagosNoSync = (request.result || []).filter(p => !p.sincronizado);
+        resolve(pagosNoSync);
       };
       request.onerror = () => {
         console.error('🔴 Error obteniendo pagos no sincronizados:', request.error);
