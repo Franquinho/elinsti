@@ -61,7 +61,18 @@ export interface Producto {
   precio: number;
   emoji: string;
   activo: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
+
+export interface ProductoCreate {
+  nombre: string;
+  precio: number;
+  emoji?: string;
+  activo?: boolean;
+}
+
+export interface ProductoUpdate extends Partial<ProductoCreate> {}
 
 export interface Comanda {
   id: number;
@@ -77,6 +88,20 @@ export interface Comanda {
   fecha_actualizacion: string;
 }
 
+export interface ComandaCreate {
+  usuario_id: number;
+  evento_id: number;
+  total: number;
+  nombre_cliente: string;
+  productos: ComandaProducto[];
+}
+
+export interface ComandaProducto {
+  id: number;
+  cantidad: number;
+  precio: number;
+}
+
 export interface ComandaItem {
   id: number;
   comanda_id: number;
@@ -84,6 +109,56 @@ export interface ComandaItem {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  created_at?: string;
+}
+
+export interface ComandaUpdate {
+  estado?: 'pendiente' | 'pagado' | 'cancelado';
+  metodo_pago?: 'efectivo' | 'transferencia' | 'invitacion';
+  nota?: string;
+}
+
+export interface Usuario {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: 'administrador' | 'caja' | 'venta';
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UsuarioCreate {
+  nombre: string;
+  email: string;
+  clave_hash: string;
+  rol: 'administrador' | 'caja' | 'venta';
+  activo?: boolean;
+}
+
+export interface Caja {
+  id: number;
+  evento_id: number;
+  usuario_id: number;
+  apertura: string;
+  cierre?: string;
+  monto_inicial: number;
+  monto_final?: number;
+  estado: 'abierta' | 'cerrada';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CajaCreate {
+  evento_id: number;
+  usuario_id: number;
+  monto_inicial: number;
+}
+
+export interface CajaUpdate {
+  cierre?: string;
+  monto_final?: number;
+  estado?: 'abierta' | 'cerrada';
 }
 
 export interface Estadistica {
@@ -98,4 +173,131 @@ export interface Estadistica {
   montoCancelado: number;
   comandasTotales: number;
   tasaCancelacion: number;
+}
+
+// Tipos para API responses
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
+  details?: any;
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Tipos para autenticación
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  user?: {
+    id: number;
+    nombre: string;
+    email: string;
+    rol: 'administrador' | 'caja' | 'venta';
+  };
+  message?: string;
+}
+
+// Tipos para notificaciones
+export interface Notification {
+  id: string;
+  type: 'success' | 'error' | 'warning' | 'info' | 'music';
+  title: string;
+  message: string;
+  duration?: number;
+  timestamp: number;
+}
+
+// Tipos para sincronización offline
+export interface OfflineComanda {
+  id: string;
+  usuario_id: number;
+  evento_id: number;
+  total: number;
+  nombre_cliente: string;
+  productos: ComandaProducto[];
+  estado: 'pendiente' | 'pagado' | 'cancelado';
+  metodo_pago?: 'efectivo' | 'transferencia' | 'invitacion';
+  nota?: string;
+  fecha_creacion: string;
+  sincronizado: boolean;
+}
+
+export interface OfflinePago {
+  id: string;
+  comanda_id: string;
+  estado: 'pendiente' | 'pagado' | 'cancelado';
+  metodo_pago: 'efectivo' | 'transferencia' | 'invitacion';
+  monto: number;
+  nota?: string;
+  fecha_creacion: string;
+  sincronizado: boolean;
+}
+
+export interface OfflineCaja {
+  id: string;
+  monto_inicial: number;
+  monto_final?: number;
+  fecha_apertura: string;
+  fecha_cierre?: string;
+  estado: 'abierta' | 'cerrada';
+  sincronizado: boolean;
+}
+
+// Tipos para logs
+export interface Log {
+  id: number;
+  usuario_id?: number;
+  accion: string;
+  detalle?: string;
+  created_at: string;
+}
+
+// Tipos para filtros y búsquedas
+export interface ComandaFilters {
+  estado?: 'pendiente' | 'pagado' | 'cancelado';
+  evento_id?: number;
+  usuario_id?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  search?: string;
+}
+
+export interface ProductoFilters {
+  activo?: boolean;
+  search?: string;
+  precio_min?: number;
+  precio_max?: number;
+}
+
+// Tipos para reportes
+export interface ReporteVentas {
+  fecha: string;
+  total_ventas: number;
+  comandas_totales: number;
+  comandas_pagadas: number;
+  comandas_canceladas: number;
+  efectivo: number;
+  transferencia: number;
+  invitacion: number;
+}
+
+export interface ReporteProductos {
+  producto_id: number;
+  nombre_producto: string;
+  cantidad_vendida: number;
+  total_ventas: number;
+  precio_promedio: number;
 } 

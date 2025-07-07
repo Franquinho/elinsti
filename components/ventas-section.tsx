@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth"
 import { apiClient } from "@/lib/api"
 import { useNotifications } from "@/components/notification-system"
 import { useComandasSync } from "@/hooks/use-comandas-sync"
+import { Badge } from "@/components/ui/badge"
 
 interface Producto {
   id: number
@@ -27,11 +28,18 @@ interface ProductoComanda {
   cantidad: number
 }
 
+interface Evento {
+  id: number
+  nombre: string
+  activo: boolean
+}
+
 export function VentasSection() {
   const { user } = useAuth()
   const { addNotification } = useNotifications()
   const { comandas, refreshComandas } = useComandasSync(5000) // Sincronizar cada 5 segundos
   const [productos, setProductos] = useState<Producto[]>([])
+  const [eventoActivo, setEventoActivo] = useState<Evento | null>(null)
   const [comanda, setComanda] = useState<ProductoComanda[]>([])
   const [nombreCliente, setNombreCliente] = useState("")
   const [cajaAbierta, setCajaAbierta] = useState(true)
@@ -39,22 +47,38 @@ export function VentasSection() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const cargarProductos = async () => {
+    const cargarDatos = async () => {
       try {
         setLoading(true)
-        const response = await apiClient.getProductos()
-        if (response.success) {
+        
+        // Cargar evento activo
+        const eventoResponse = await apiClient.getEventoActivo()
+        if (eventoResponse.success && eventoResponse.evento) {
+          setEventoActivo(eventoResponse.evento)
+        } else {
+          addNotification({
+            type: "error",
+            title: "Error",
+            message: "No hay evento activo configurado",
+            duration: 5000,
+          })
+          return
+        }
+
+        // Cargar productos
+        const productosResponse = await apiClient.getProductos()
+        if (productosResponse.success) {
           // Filtrar solo productos activos en el frontend también
-          const productosActivos = response.productos.filter((producto: Producto) => producto.activo === true)
-          console.log("🔔 [Frontend] Productos cargados:", response.productos.length, "total,", productosActivos.length, "activos")
+          const productosActivos = productosResponse.productos.filter((producto: Producto) => producto.activo === true)
+          console.log("🔔 [Frontend] Productos cargados:", productosResponse.productos.length, "total,", productosActivos.length, "activos")
           setProductos(productosActivos)
         }
       } catch (error) {
-        console.error("Error cargando productos:", error)
+        console.error("Error cargando datos:", error)
         addNotification({
           type: "error",
           title: "Error",
-          message: "No se pudieron cargar los productos",
+          message: "No se pudieron cargar los datos necesarios",
           duration: 3000,
         })
       } finally {
@@ -62,7 +86,7 @@ export function VentasSection() {
       }
     }
 
-    cargarProductos()
+    cargarDatos()
   }, [addNotification])
 
   const refrescarProductos = async () => {
@@ -134,22 +158,45 @@ export function VentasSection() {
   }
 
   const crearComanda = async () => {
+    // Validaciones previas
+    const validations = []
+    
+    if (!eventoActivo) {
+      validations.push("No hay evento activo configurado")
+    }
+
     if (comanda.length === 0) {
-      addNotification({
-        type: "error",
-        title: "Error",
-        message: "Debe agregar al menos un producto",
-        duration: 3000,
-      });
-      return;
+      validations.push("Debe agregar al menos un producto")
     }
 
     if (!nombreCliente.trim()) {
+      validations.push("Debe ingresar el nombre del cliente")
+    } else if (nombreCliente.trim().length < 2) {
+      validations.push("El nombre del cliente debe tener al menos 2 caracteres")
+    } else if (nombreCliente.trim().length > 100) {
+      validations.push("El nombre del cliente es demasiado largo")
+    }
+
+    // Validar que todos los productos tengan cantidades válidas
+    const productosInvalidos = comanda.filter(item => item.cantidad <= 0 || item.cantidad > 999999)
+    if (productosInvalidos.length > 0) {
+      validations.push("Algunos productos tienen cantidades inválidas")
+    }
+
+    // Validar que el total sea válido
+    const total = calcularTotal()
+    if (total <= 0) {
+      validations.push("El total debe ser mayor a 0")
+    } else if (total > 999999.99) {
+      validations.push("El total es demasiado alto")
+    }
+
+    if (validations.length > 0) {
       addNotification({
         type: "error",
-        title: "Error",
-        message: "Debe ingresar el nombre del cliente",
-        duration: 3000,
+        title: "Datos inválidos",
+        message: validations.join(". "),
+        duration: 5000,
       });
       return;
     }
@@ -159,7 +206,7 @@ export function VentasSection() {
     try {
       const comandaData = {
         usuario_id: user!.id,
-        evento_id: 1,
+        evento_id: eventoActivo.id,
         total: calcularTotal(),
         nombre_cliente: nombreCliente.trim(),
         productos: comanda.map(({ id, cantidad, precio }) => ({
@@ -168,6 +215,8 @@ export function VentasSection() {
           precio,
         })),
       };
+
+      console.log("🔔 [Frontend] Creando comanda con datos:", comandaData);
 
       const response = await apiClient.createComanda(comandaData);
 
@@ -185,14 +234,38 @@ export function VentasSection() {
           message: `Comanda #${response.comanda_id} para ${nombreCliente} creada exitosamente 🎵`,
           duration: 4000,
         });
+      } else {
+        // Manejar respuesta de error del API
+        addNotification({
+          type: "error",
+          title: "Error al crear comanda",
+          message: response.message || "No se pudo crear la comanda",
+          duration: 5000,
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creando comanda:", error);
+      
+      // Determinar el tipo de error y mostrar mensaje apropiado
+      let errorMessage = "No se pudo crear la comanda"
+      
+      if (error.status === 400) {
+        errorMessage = "Datos incorrectos. Verifica la información ingresada."
+      } else if (error.status === 429) {
+        errorMessage = "Demasiadas peticiones. Espera un momento antes de intentar nuevamente."
+      } else if (error.status === 413) {
+        errorMessage = "Datos demasiado grandes. Reduce la cantidad de productos."
+      } else if (error.status >= 500) {
+        errorMessage = "Error del servidor. Intenta nuevamente en unos minutos."
+      } else if (error.message?.includes('fetch')) {
+        errorMessage = "Error de conexión. Verifica tu conexión a internet."
+      }
+      
       addNotification({
         type: "error",
         title: "Error",
-        message: "No se pudo crear la comanda",
-        duration: 3000,
+        message: errorMessage,
+        duration: 5000,
       });
     } finally {
       setIsCreatingComanda(false);
@@ -204,9 +277,21 @@ export function VentasSection() {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <Disc3 className="w-8 h-8 animate-spin mx-auto mb-4 text-pink-500" />
-          <p className="text-gray-600">Cargando productos...</p>
+          <p className="text-gray-600">Cargando datos...</p>
         </div>
       </div>
+    )
+  }
+
+  if (!eventoActivo) {
+    return (
+      <Card className="max-w-md mx-auto border-0 shadow-xl">
+        <CardContent className="p-8 text-center">
+          <div className="text-6xl mb-4">🎭</div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">Sin Evento Activo</h3>
+          <p className="text-gray-600">No hay un evento activo configurado. Contacte al administrador.</p>
+        </CardContent>
+      </Card>
     )
   }
 
@@ -224,6 +309,28 @@ export function VentasSection() {
 
   return (
     <div className="grid lg:grid-cols-2 gap-6">
+      {/* Evento activo */}
+      <div className="lg:col-span-2 mb-4">
+        <Card className="border-0 shadow-lg bg-gradient-to-r from-purple-50 to-pink-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <Music2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800">Evento Activo</h3>
+                  <p className="text-purple-600 font-medium">{eventoActivo.nombre}</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">
+                Activo
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Productos disponibles */}
       <div>
         <div className="flex items-center justify-between mb-4">

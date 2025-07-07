@@ -21,13 +21,31 @@ class ApiClient {
         ? await res.json()
         : { success: false, raw: await res.text() }
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || data.error || `HTTP ${res.status} – ${res.statusText}`)
+      if (!res.ok) {
+        const errorMessage = data.message || data.error || `HTTP ${res.status} – ${res.statusText}`
+        console.error("🔴 API Error:", {
+          status: res.status,
+          statusText: res.statusText,
+          url,
+          message: errorMessage,
+          details: data.details
+        })
+        throw new Error(errorMessage)
+      }
+
+      if (!data.success) {
+        const errorMessage = data.message || data.error || "Operación fallida"
+        console.error("🔴 API Error (success: false):", {
+          url,
+          message: errorMessage,
+          details: data.details
+        })
+        throw new Error(errorMessage)
       }
 
       return data
     } catch (err) {
-      console.error("API Error:", err)
+      console.error("🔴 API Error:", err)
       throw err
     }
   }

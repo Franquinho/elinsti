@@ -1,0 +1,26 @@
+{
+  "fecha": "2025-06-30T19:01:17.666Z",
+  "entorno": "staging",
+  "version": "2.0.0-staging",
+  "configuracion": {
+    "NEXT_PUBLIC_SUPABASE_URL_STAGING": "✅ CONFIGURADO",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING": "✅ CONFIGURADO",
+    "SUPABASE_SERVICE_ROLE_KEY_STAGING": "✅ CONFIGURADO"
+  },
+  "tablas": {
+    "usuarios": "✅ EXISTE",
+    "productos": "✅ EXISTE",
+    "eventos": "✅ EXISTE",
+    "comandas": "✅ EXISTE",
+    "comanda_items": "✅ EXISTE",
+    "caja": "❌ NO EXISTE"
+  },
+  "conexion": {
+    "anonima": "✅ Exitosa",
+    "servicio": "✅ Exitosa"
+  },
+  "supabaseUrl": "https://joebhvyfcftobrngcqor.supabase.co",
+  "recomendaciones": [
+    "Ejecutar migraciones SQL para: caja"
+  ]
+}

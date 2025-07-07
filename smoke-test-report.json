@@ -1,0 +1,59 @@
+{
+  "fecha": "2025-07-07T13:34:58.118Z",
+  "entorno": "staging",
+  "tests": [
+    {
+      "nombre": "Servidor corriendo",
+      "url": "http://localhost:3002/api/health",
+      "status": 404,
+      "success": false
+    },
+    {
+      "nombre": "Login válido",
+      "url": "http://localhost:3002/api/auth/login",
+      "status": 500,
+      "success": false
+    },
+    {
+      "nombre": "Login inválido",
+      "url": "http://localhost:3002/api/auth/login",
+      "status": 500,
+      "success": false
+    },
+    {
+      "nombre": "Listar productos",
+      "url": "http://localhost:3002/api/productos/list",
+      "status": 500,
+      "success": false
+    },
+    {
+      "nombre": "Listar eventos",
+      "url": "http://localhost:3002/api/eventos",
+      "status": 500,
+      "success": false
+    },
+    {
+      "nombre": "Crear comanda sin auth",
+      "url": "http://localhost:3002/api/comandas/create",
+      "status": 500,
+      "success": false
+    },
+    {
+      "nombre": "Obtener estadísticas",
+      "url": "http://localhost:3002/api/stats",
+      "status": 500,
+      "success": false
+    },
+    {
+      "nombre": "Endpoint inexistente",
+      "url": "http://localhost:3002/api/endpoint-inexistente",
+      "status": 404,
+      "success": true
+    }
+  ],
+  "resumen": {
+    "total": 8,
+    "exitosos": 1,
+    "fallidos": 7
+  }
+}

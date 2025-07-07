@@ -25,7 +25,8 @@ import {
   Eye,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useToast } from '../hooks/use-toast';
@@ -69,33 +70,73 @@ export function CajaSection() {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia' | 'invitacion'>('efectivo');
   const [paymentNote, setPaymentNote] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { createOfflineComanda, processOfflinePayment, syncStatus } = useOfflineSync();
 
   // Query para obtener comandas
-  const { data: comandas = [], isLoading: isLoadingComandas } = useQuery({
+  const { data: comandas = [], isLoading: isLoadingComandas, error: comandasError } = useQuery({
     queryKey: ['comandas'],
     queryFn: api.getComandas,
-    refetchInterval: 5000
+    refetchInterval: 5000,
+    retry: 3,
+    retryDelay: 1000
   });
 
   // Query para obtener estadísticas
-  const { data: stats } = useQuery({
+  const { data: stats, error: statsError } = useQuery({
     queryKey: ['stats'],
-    queryFn: api.getStats
+    queryFn: api.getStats,
+    retry: 3,
+    retryDelay: 1000
   });
 
   // Query para obtener evento activo
-  const { data: activeEvent } = useQuery({
+  const { data: activeEvent, error: eventError } = useQuery({
     queryKey: ['active-event'],
-    queryFn: api.getEventoActivo
+    queryFn: api.getEventoActivo,
+    retry: 3,
+    retryDelay: 1000
   });
+
+  // Mostrar errores de queries
+  useEffect(() => {
+    if (comandasError) {
+      toast({
+        title: "🔴 Error cargando comandas",
+        description: comandasError instanceof Error ? comandasError.message : "Error desconocido",
+        duration: 5000
+      });
+    }
+    
+    if (statsError) {
+      toast({
+        title: "🔴 Error cargando estadísticas",
+        description: statsError instanceof Error ? statsError.message : "Error desconocido",
+        duration: 5000
+      });
+    }
+    
+    if (eventError) {
+      toast({
+        title: "🔴 Error cargando evento",
+        description: eventError instanceof Error ? eventError.message : "Error desconocido",
+        duration: 5000
+      });
+    }
+  }, [comandasError, statsError, eventError, toast]);
 
   // Mutación para crear comanda
   const createComanda = useMutation({
     mutationFn: async (comandaData: any) => {
+      // Validar datos antes de enviar
+      const errors = validateComandaData(comandaData);
+      if (errors.length > 0) {
+        throw new Error(errors.join(', '));
+      }
+
       if (syncStatus.isOnline) {
         return api.createComanda(comandaData);
       } else {
@@ -115,7 +156,7 @@ export function CajaSection() {
       console.error('Error creando comanda:', error);
       toast({
         title: "🔴 Error",
-        description: "No se pudo crear la comanda",
+        description: error instanceof Error ? error.message : "No se pudo crear la comanda",
         duration: 5000
       });
     }
@@ -124,6 +165,12 @@ export function CajaSection() {
   // Mutación para procesar pago
   const processPayment = useMutation({
     mutationFn: async ({ comandaId, paymentData }: { comandaId: string; paymentData: any }) => {
+      // Validar datos de pago
+      const errors = validatePaymentData(paymentData);
+      if (errors.length > 0) {
+        throw new Error(errors.join(', '));
+      }
+
       if (syncStatus.isOnline) {
         return api.updateComandaStatus(comandaId, paymentData.estado, paymentData.metodo_pago, paymentData.nota);
       } else {
@@ -142,6 +189,7 @@ export function CajaSection() {
       setIsProcessingPayment(false);
       setSelectedComanda(null);
       setPaymentNote('');
+      setValidationErrors([]);
       toast({
         title: "🟢 Pago procesado",
         description: syncStatus.isOnline ? "Pago procesado exitosamente" : "Pago guardado offline",
@@ -153,11 +201,56 @@ export function CajaSection() {
       setIsProcessingPayment(false);
       toast({
         title: "🔴 Error",
-        description: "No se pudo procesar el pago",
+        description: error instanceof Error ? error.message : "No se pudo procesar el pago",
         duration: 5000
       });
     }
   });
+
+  // Funciones de validación
+  const validateComandaData = (data: any): string[] => {
+    const errors: string[] = [];
+    
+    if (!data.usuario_id || typeof data.usuario_id !== 'number') {
+      errors.push('ID de usuario inválido');
+    }
+    
+    if (!data.evento_id || typeof data.evento_id !== 'number') {
+      errors.push('ID de evento inválido');
+    }
+    
+    if (!data.total || typeof data.total !== 'number' || data.total <= 0) {
+      errors.push('Total inválido');
+    }
+    
+    if (!data.nombre_cliente || typeof data.nombre_cliente !== 'string' || data.nombre_cliente.trim().length === 0) {
+      errors.push('Nombre de cliente requerido');
+    }
+    
+    if (!data.productos || !Array.isArray(data.productos) || data.productos.length === 0) {
+      errors.push('Debe incluir al menos un producto');
+    }
+    
+    return errors;
+  };
+
+  const validatePaymentData = (data: any): string[] => {
+    const errors: string[] = [];
+    
+    if (!data.estado || !['pendiente', 'pagado', 'cancelado'].includes(data.estado)) {
+      errors.push('Estado inválido');
+    }
+    
+    if (data.estado === 'pagado' && !data.metodo_pago) {
+      errors.push('Método de pago requerido para comandas pagadas');
+    }
+    
+    if (data.metodo_pago && !['efectivo', 'transferencia', 'invitacion'].includes(data.metodo_pago)) {
+      errors.push('Método de pago inválido');
+    }
+    
+    return errors;
+  };
 
   // Filtrar comandas
   const filteredComandas = comandas.filter((comanda: Comanda) => {
@@ -190,65 +283,83 @@ export function CajaSection() {
   const handleProcessPayment = () => {
     if (!selectedComanda) return;
 
+    // Validar datos antes de procesar
+    const paymentData = {
+      estado: 'pagado',
+      metodo_pago: paymentMethod,
+      nota: paymentNote,
+      total: selectedComanda.total
+    };
+
+    const errors = validatePaymentData(paymentData);
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      toast({
+        title: "🔴 Datos inválidos",
+        description: errors.join(', '),
+        duration: 5000
+      });
+      return;
+    }
+
     setIsProcessingPayment(true);
     processPayment.mutate({
       comandaId: selectedComanda.id,
-      paymentData: {
-        estado: 'pagado',
-        metodo_pago: paymentMethod,
-        nota: paymentNote
-      }
+      paymentData
     });
   };
 
   const getStatusBadge = (estado: string) => {
     switch (estado) {
       case 'pendiente':
-        return <Badge variant="secondary" className="bg-yellow-500 hover:bg-yellow-600 text-white">Pendiente</Badge>;
+        return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3 mr-1" />Pendiente</Badge>;
       case 'pagado':
-        return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Pagado</Badge>;
+        return <Badge variant="secondary" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Pagado</Badge>;
       case 'cancelado':
-        return <Badge variant="destructive">Cancelado</Badge>;
+        return <Badge variant="secondary" className="bg-red-100 text-red-800"><XCircle className="w-3 h-3 mr-1" />Cancelado</Badge>;
       default:
-        return <Badge variant="outline">{estado}</Badge>;
+        return <Badge variant="secondary">{estado}</Badge>;
     }
   };
 
   const getPaymentMethodIcon = (metodo?: string) => {
     switch (metodo) {
       case 'efectivo':
-        return <Banknote className="w-4 h-4" />;
+        return <Banknote className="w-4 h-4 text-green-600" />;
       case 'transferencia':
-        return <CreditCard className="w-4 h-4" />;
+        return <CreditCard className="w-4 h-4 text-blue-600" />;
       case 'invitacion':
-        return <Gift className="w-4 h-4" />;
+        return <Gift className="w-4 h-4 text-purple-600" />;
       default:
-        return <Clock className="w-4 h-4" />;
+        return <DollarSign className="w-4 h-4 text-gray-600" />;
     }
   };
 
+  if (isLoadingComandas) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600">Cargando comandas...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header con indicador offline */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Caja</h2>
-          <p className="text-muted-foreground">
-            Gestiona comandas y pagos {activeEvent && `- ${activeEvent.nombre}`}
-          </p>
-        </div>
-        <OfflineIndicator />
-      </div>
+      {/* Indicador de estado offline */}
+      <OfflineIndicator />
 
-      {/* Estadísticas rápidas */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Estadísticas de caja */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Ventas</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${cajaStats.totalVentas.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${cajaStats.totalVentas.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               {cajaStats.comandasPagadas} comandas pagadas
             </p>
@@ -274,9 +385,9 @@ export function CajaSection() {
             <Banknote className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${cajaStats.efectivo.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${cajaStats.efectivo.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Pagos en efectivo
+              {cajaStats.comandasPagadas > 0 ? Math.round((cajaStats.efectivo / cajaStats.totalVentas) * 100) : 0}% del total
             </p>
           </CardContent>
         </Card>
@@ -287,46 +398,61 @@ export function CajaSection() {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${cajaStats.transferencia.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${cajaStats.transferencia.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Pagos por transferencia
+              {cajaStats.comandasPagadas > 0 ? Math.round((cajaStats.transferencia / cajaStats.totalVentas) * 100) : 0}% del total
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gestión de comandas */}
+      {/* Filtros y búsqueda */}
       <Card>
         <CardHeader>
           <CardTitle>Gestión de Comandas</CardTitle>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por cliente o ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filtrar por estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos</SelectItem>
-                <SelectItem value="pendiente">Pendientes</SelectItem>
-                <SelectItem value="pagado">Pagados</SelectItem>
-                <SelectItem value="cancelado">Cancelados</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </CardHeader>
         <CardContent>
-          {isLoadingComandas ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin" />
-              <span className="ml-2">Cargando comandas...</span>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Label htmlFor="search">Buscar comandas</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search"
+                  placeholder="Buscar por cliente o ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="filter">Filtrar por estado</Label>
+              <Select value={filterStatus} onValueChange={(value: any) => setFilterStatus(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="pendiente">Pendientes</SelectItem>
+                  <SelectItem value="pagado">Pagados</SelectItem>
+                  <SelectItem value="cancelado">Cancelados</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Tabla de comandas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Comandas ({filteredComandas.length})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {filteredComandas.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No hay comandas que coincidan con los filtros</p>
             </div>
           ) : (
             <Table>
@@ -344,90 +470,119 @@ export function CajaSection() {
               <TableBody>
                 {filteredComandas.map((comanda: Comanda) => (
                   <TableRow key={comanda.id}>
-                    <TableCell className="font-mono text-sm">{comanda.id}</TableCell>
+                    <TableCell className="font-mono">#{comanda.id}</TableCell>
                     <TableCell>{comanda.nombre_cliente}</TableCell>
-                    <TableCell className="font-medium">${comanda.total.toFixed(2)}</TableCell>
+                    <TableCell>${comanda.total.toLocaleString()}</TableCell>
                     <TableCell>{getStatusBadge(comanda.estado)}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         {getPaymentMethodIcon(comanda.metodo_pago)}
-                        <span className="text-sm capitalize">
-                          {comanda.metodo_pago || 'Pendiente'}
-                        </span>
+                        <span className="capitalize">{comanda.metodo_pago || 'N/A'}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell>
                       {new Date(comanda.fecha_creacion).toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex gap-2">
                         <Dialog>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedComanda(comanda)}
+                            >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
                           <DialogContent className="max-w-2xl">
                             <DialogHeader>
-                              <DialogTitle>Detalles de Comanda - {comanda.id}</DialogTitle>
+                              <DialogTitle>Detalles de Comanda #{comanda.id}</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label>Cliente</Label>
-                                  <p className="text-sm font-medium">{comanda.nombre_cliente}</p>
-                                </div>
-                                <div>
-                                  <Label>Total</Label>
-                                  <p className="text-sm font-medium">${comanda.total.toFixed(2)}</p>
-                                </div>
+                              <div>
+                                <Label>Cliente</Label>
+                                <p className="font-medium">{comanda.nombre_cliente}</p>
                               </div>
-                              
                               <div>
                                 <Label>Productos</Label>
-                                <div className="mt-2 space-y-2">
+                                <div className="space-y-2">
                                   {comanda.productos.map((producto, index) => (
                                     <div key={index} className="flex justify-between items-center p-2 bg-muted rounded">
-                                      <span className="text-sm">{producto.nombre}</span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm text-muted-foreground">
-                                          {producto.cantidad}x
-                                        </span>
-                                        <span className="text-sm font-medium">
-                                          ${producto.precio.toFixed(2)}
-                                        </span>
-                                      </div>
+                                      <span>{producto.nombre}</span>
+                                      <span className="text-sm text-muted-foreground">
+                                        {producto.cantidad} x ${producto.precio.toLocaleString()}
+                                      </span>
                                     </div>
                                   ))}
                                 </div>
                               </div>
-
-                              {comanda.nota && (
-                                <div>
-                                  <Label>Nota</Label>
-                                  <p className="text-sm text-muted-foreground">{comanda.nota}</p>
-                                </div>
-                              )}
-
+                              <div className="flex justify-between items-center pt-4 border-t">
+                                <span className="font-bold">Total:</span>
+                                <span className="font-bold text-lg">${comanda.total.toLocaleString()}</span>
+                              </div>
                               {comanda.estado === 'pendiente' && (
-                                <div className="pt-4 border-t">
-                                  <Button 
-                                    onClick={() => setSelectedComanda(comanda)}
+                                <div className="space-y-4 pt-4">
+                                  <div>
+                                    <Label htmlFor="payment-method">Método de Pago</Label>
+                                    <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                                        <SelectItem value="invitacion">Invitación</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="payment-note">Nota (opcional)</Label>
+                                    <Textarea
+                                      id="payment-note"
+                                      value={paymentNote}
+                                      onChange={(e) => setPaymentNote(e.target.value)}
+                                      placeholder="Agregar nota sobre el pago..."
+                                    />
+                                  </div>
+                                  {validationErrors.length > 0 && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                                      <div className="flex items-center gap-2 text-red-800">
+                                        <AlertTriangle className="w-4 h-4" />
+                                        <span className="font-medium">Errores de validación:</span>
+                                      </div>
+                                      <ul className="mt-2 text-sm text-red-700">
+                                        {validationErrors.map((error, index) => (
+                                          <li key={index}>• {error}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  <Button
+                                    onClick={handleProcessPayment}
+                                    disabled={isProcessingPayment}
                                     className="w-full"
                                   >
-                                    Procesar Pago
+                                    {isProcessingPayment ? (
+                                      <>
+                                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                        Procesando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Procesar Pago
+                                      </>
+                                    )}
                                   </Button>
                                 </div>
                               )}
                             </div>
                           </DialogContent>
                         </Dialog>
-
-                        {comanda.estado === 'pagado' && (
-                          <Button variant="outline" size="sm">
-                            <Printer className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <Button variant="outline" size="sm">
+                          <Printer className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -437,93 +592,6 @@ export function CajaSection() {
           )}
         </CardContent>
       </Card>
-
-      {/* Modal de procesamiento de pago */}
-      <Dialog open={!!selectedComanda} onOpenChange={() => setSelectedComanda(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Procesar Pago - {selectedComanda?.id}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Cliente</Label>
-                <p className="text-sm font-medium">{selectedComanda?.nombre_cliente}</p>
-              </div>
-              <div>
-                <Label>Total</Label>
-                <p className="text-sm font-medium">${selectedComanda?.total.toFixed(2)}</p>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="payment-method">Método de Pago</Label>
-              <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="efectivo">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4" />
-                      Efectivo
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="transferencia">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      Transferencia
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="invitacion">
-                    <div className="flex items-center gap-2">
-                      <Gift className="h-4 w-4" />
-                      Invitación
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="payment-note">Nota (opcional)</Label>
-              <Textarea
-                id="payment-note"
-                value={paymentNote}
-                onChange={(e) => setPaymentNote(e.target.value)}
-                placeholder="Nota adicional sobre el pago..."
-              />
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button
-                onClick={handleProcessPayment}
-                disabled={isProcessingPayment}
-                className="flex-1"
-              >
-                {isProcessingPayment ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Confirmar Pago
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedComanda(null)}
-                disabled={isProcessingPayment}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
