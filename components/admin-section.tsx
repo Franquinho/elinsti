@@ -393,7 +393,7 @@ export function AdminSection() {
                     </tr>
                   </thead>
                   <tbody>
-                    {productos.map((producto) => (
+                    {Array.isArray(productos) && productos.filter(Boolean).map((producto) => (
                       <tr key={producto.id} className={`border-b ${!producto.activo ? 'bg-gray-50' : ''}`}>
                         <td className="p-4">
                           <Switch 
@@ -497,7 +497,7 @@ export function AdminSection() {
         </TabsContent>
 
         <TabsContent value="estadisticas">
-           <AdvancedStats stats={estadisticas} onRefresh={cargarDatos} />
+           {estadisticas && <AdvancedStats stats={estadisticas} onRefresh={cargarDatos} />}
         </TabsContent>
 
         <TabsContent value="configuracion">
@@ -640,8 +640,10 @@ export function AdminSection() {
                   </Dialog>
                 </div>
 
-                {/* Selector de eventos */}
-                <EventSelector showStats={true} />
+                {/* Selector de eventos - CON VALIDACIÓN */}
+                {eventos && Array.isArray(eventos) && (
+                  <EventSelector showStats={true} />
+                )}
               </CardContent>
             </Card>
           </div>
