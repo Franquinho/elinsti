@@ -8,6 +8,7 @@ import { LogOut, Wifi, WifiOff, Music, Moon, Sun } from "lucide-react"
 import { useState, useEffect } from "react"
 import { offlineStorage } from "@/lib/offline-storage"
 import Image from "next/image"
+import EventSelector from "@/components/event-selector";
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -133,6 +134,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
       </header>
 
       {/* Content */}
+      <div className="container mx-auto px-4 py-4">
+        <EventSelector />
+      </div>
       <main className="container mx-auto px-4 py-6">{children}</main>
     </div>
   )

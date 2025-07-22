@@ -6,61 +6,40 @@ export async function GET() {
   try {
     console.log("🔔 [API] Obteniendo evento activo...");
     
-    // Primero obtener el ID del evento activo desde la configuración
-    const { data: config, error: configError } = await supabaseAdmin
-      .from('configuracion_sistema')
-      .select('valor')
-      .eq('clave', 'evento_activo_id')
-      .single();
-
-    if (configError || !config) {
-      console.error("🔴 [API] Error obteniendo configuración de evento activo:", configError);
-      return NextResponse.json({ 
-        success: false, 
-        message: "Error obteniendo configuración del evento activo" 
-      }, { status: 500 });
-    }
-
-    const eventoActivoId = parseInt(config.valor);
+    const now = new Date().toISOString();
     
-    if (!eventoActivoId) {
-      console.log("🟡 [API] No hay evento activo configurado");
-      return NextResponse.json({ 
-        success: true, 
-        evento: null 
-      });
-    }
-
-    // Obtener los datos del evento activo
-    const { data: evento, error: eventoError } = await supabaseAdmin
+    const { data: evento, error } = await supabaseAdmin
       .from('eventos')
       .select('*')
-      .eq('id', eventoActivoId)
       .eq('activo', true)
+      .lte('fecha_inicio', now)
+      .gte('fecha_fin', now)
+      .order('fecha_inicio', { ascending: false })
+      .limit(1)
       .single();
 
-    if (eventoError) {
-      console.error("🔴 [API] Error obteniendo evento activo:", eventoError);
+    if (error && error.code !== 'PGRST116') {
+      console.error("🔴 [API] Error obteniendo evento activo:", error);
       return NextResponse.json({ 
         success: false, 
-        message: "Error obteniendo evento activo" 
+        message: "Error al obtener evento activo" 
       }, { status: 500 });
     }
 
     if (!evento) {
-      console.log("🟡 [API] Evento activo no encontrado o inactivo");
+      console.log("🟡 [API] No hay evento activo en este momento");
       return NextResponse.json({ 
         success: true, 
-        evento: null 
+        evento: null,
+        message: "No hay evento activo en este momento" 
       });
     }
 
-    console.log("🟢 [API] Evento activo obtenido:", evento.nombre);
+    console.log("🟢 [API] Evento activo encontrado:", evento.nombre);
     return NextResponse.json({ 
       success: true, 
       evento 
     });
-
   } catch (error) {
     console.error("🔴 [API] Error inesperado:", error);
     return NextResponse.json({ 
@@ -70,59 +49,54 @@ export async function GET() {
   }
 }
 
-// POST - Cambiar el evento activo
-export async function POST(request: Request) {
+// PUT - Establecer un evento como activo
+export async function PUT(request: Request) {
   try {
-    const body = await request.json();
-    const { evento_id } = body;
-
-    if (!evento_id || typeof evento_id !== 'number') {
+    const { eventoId } = await request.json();
+    
+    if (!eventoId) {
       return NextResponse.json({ 
         success: false, 
-        message: "ID de evento válido es requerido" 
+        message: "ID del evento es requerido" 
       }, { status: 400 });
     }
 
-    // Verificar que el evento existe y está activo
-    const { data: evento, error: eventoError } = await supabaseAdmin
+    console.log("🔔 [API] Estableciendo evento como activo:", eventoId);
+
+    // Primero desactivar todos los eventos
+    const { error: deactivateError } = await supabaseAdmin
       .from('eventos')
-      .select('id, nombre, activo')
-      .eq('id', evento_id)
-      .single();
+      .update({ activo: false })
+      .eq('activo', true);
 
-    if (eventoError || !evento) {
+    if (deactivateError) {
+      console.error("🔴 [API] Error desactivando eventos:", deactivateError);
       return NextResponse.json({ 
         success: false, 
-        message: "Evento no encontrado" 
-      }, { status: 404 });
-    }
-
-    if (!evento.activo) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "El evento debe estar activo para poder seleccionarlo" 
-      }, { status: 400 });
-    }
-
-    // Actualizar la configuración del evento activo
-    const { error: updateError } = await supabaseAdmin
-      .from('configuracion_sistema')
-      .update({ valor: evento_id.toString() })
-      .eq('clave', 'evento_activo_id');
-
-    if (updateError) {
-      console.error("🔴 [API] Error actualizando evento activo:", updateError);
-      return NextResponse.json({ 
-        success: false, 
-        message: "Error actualizando evento activo" 
+        message: "Error al desactivar eventos" 
       }, { status: 500 });
     }
 
-    console.log("🟢 [API] Evento activo cambiado a:", evento.nombre);
+    // Luego activar el evento seleccionado
+    const { data, error } = await supabaseAdmin
+      .from('eventos')
+      .update({ activo: true })
+      .eq('id', eventoId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("🔴 [API] Error activando evento:", error);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al activar evento" 
+      }, { status: 500 });
+    }
+
+    console.log("🟢 [API] Evento activado:", data.nombre);
     return NextResponse.json({ 
       success: true, 
-      message: `Evento activo cambiado a: ${evento.nombre}`,
-      evento_id: evento.id
+      evento: data 
     });
 
   } catch (error: any) {

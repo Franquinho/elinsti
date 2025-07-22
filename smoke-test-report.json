@@ -1,5 +1,5 @@
 {
-  "fecha": "2025-07-07T13:34:58.118Z",
+  "fecha": "2025-07-07T13:44:12.933Z",
   "entorno": "staging",
   "tests": [
     {
@@ -11,13 +11,13 @@
     {
       "nombre": "Login válido",
       "url": "http://localhost:3002/api/auth/login",
-      "status": 500,
+      "status": 404,
       "success": false
     },
     {
       "nombre": "Login inválido",
       "url": "http://localhost:3002/api/auth/login",
-      "status": 500,
+      "status": 404,
       "success": false
     },
     {

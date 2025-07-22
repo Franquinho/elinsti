@@ -1,5 +1,5 @@
 {
-  "fecha": "2025-06-30T19:01:17.666Z",
+  "fecha": "2025-07-14T23:53:47.851Z",
   "entorno": "staging",
   "version": "2.0.0-staging",
   "configuracion": {
@@ -13,14 +13,12 @@
     "eventos": "✅ EXISTE",
     "comandas": "✅ EXISTE",
     "comanda_items": "✅ EXISTE",
-    "caja": "❌ NO EXISTE"
+    "caja": "✅ EXISTE"
   },
   "conexion": {
     "anonima": "✅ Exitosa",
     "servicio": "✅ Exitosa"
   },
   "supabaseUrl": "https://joebhvyfcftobrngcqor.supabase.co",
-  "recomendaciones": [
-    "Ejecutar migraciones SQL para: caja"
-  ]
+  "recomendaciones": []
 }
