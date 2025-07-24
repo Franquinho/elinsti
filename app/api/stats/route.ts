@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const { data: comandas, error } = await supabaseAdmin
       .from('comandas')
-      .select('fecha_creacion, total, estado, metodo_pago, productos:comanda_items(cantidad)');
+      .select('fecha_creacion, total, estado, metodo_pago, comanda_items(cantidad)');
 
     if (error) {
       console.error("Error obteniendo comandas:", error);
@@ -69,8 +69,8 @@ export async function GET() {
                 if (comanda.metodo_pago === 'transferencia') totalTransferencia += comanda.total;
                 if (comanda.metodo_pago === 'invitacion') totalInvitacion += comanda.total;
 
-                if (Array.isArray(comanda.productos)) {
-                    productosVendidos += comanda.productos.reduce((acc, p) => acc + (p.cantidad || 0), 0);
+                if (Array.isArray(comanda.comanda_items)) {
+                    productosVendidos += comanda.comanda_items.reduce((acc, p) => acc + (p.cantidad || 0), 0);
                 }
             }
         }
