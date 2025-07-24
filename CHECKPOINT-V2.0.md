@@ -142,7 +142,7 @@ SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=https://joebhvyfcftobrngcqor.supabase.co
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZWJodnlmY2Z0b2JybmdjcW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY5MzMsImV4cCI6MjA2NjAxMjkzM30.zyzj1pZLDboSnRYVtpYUhsrKkDAcPwVVzbohmQvBhoE
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZWJodnlmY2JybmdjcW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY5MzMsImV4cCI6MjA2NjAxMjkzM30.zyzj1pZLDboSnRYVtpYUhsrKkDAcPwVVzbohmQvBhoE
    ```
 
 3. **Guarda el archivo.**
@@ -219,3 +219,28 @@ SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase
 ---
 
 *Este checkpoint marca el estado estable del sistema antes de implementar las funcionalidades avanzadas de V3.0. El sistema está completamente funcional para operaciones básicas de POS.* 
+
+## **¿Instrucciones para crear `.env.local`?**
+
+### **1. En la raíz de tu proyecto (`C:\FranPrueDev\INSTV22`), crea un archivo llamado `.env.local`**
+
+### **2. Agrega este contenido al archivo:**
+
+```
+<code_block_to_apply_changes_from>
+```
+
+### **3. Guarda el archivo**
+
+### **4. Reinicia tu servidor de desarrollo**
+
+---
+
+## **🔍 Verificación**
+
+Una vez que hayas creado el archivo, ejecuta este comando para verificar:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=https://joebhvyfcftobrngcqor.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZWJodnlmY2JybmdjcW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY5MzMsImV4cCI6MjA2NjAxMjkzM30.zyzj1pZLDboSnRYVtpYUhsrKkDAcPwVVzbohmQvBhoE
+``` 
