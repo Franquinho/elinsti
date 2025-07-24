@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Settings, Download, Plus, Edit, Trash2, RefreshCw, Loader2, Calendar, MapPin, Users, DollarSign, Star, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import { AdvancedStats } from "./advanced-stats"
-import { EventSelector } from "./event-selector"
+import EventSelector from "./event-selector"
 import { apiClient } from "@/lib/api"
 import { useToast } from "@/components/ui/use-toast"
 import { Producto, Evento, EventoCreate } from "@/lib/types"
@@ -642,7 +642,7 @@ export function AdminSection() {
 
                 {/* Selector de eventos - CON VALIDACIÓN */}
                 {eventos && Array.isArray(eventos) && (
-                  <EventSelector showStats={true} />
+                  <EventSelector />
                 )}
               </CardContent>
             </Card>

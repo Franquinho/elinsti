@@ -135,25 +135,34 @@ SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase
 
 ---
 
-## 📋 **COMANDOS DE DESARROLLO**
+## **¿Qué debes hacer tú manualmente?**
 
-### **Instalación y Configuración**
-```bash
-npm install
-npm run dev
-```
+1. **Abre el archivo `.env`** (o `.env.local` si usas Next.js) en la raíz de tu proyecto.
+2. **Reemplaza el contenido por:**
 
-### **Pruebas**
-```bash
-npm test
-npm test -- --coverage
-```
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=https://joebhvyfcftobrngcqor.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZWJodnlmY2Z0b2JybmdjcW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY5MzMsImV4cCI6MjA2NjAxMjkzM30.zyzj1pZLDboSnRYVtpYUhsrKkDAcPwVVzbohmQvBhoE
+   ```
 
-### **Build y Deploy**
-```bash
-npm run build
-npm start
-```
+3. **Guarda el archivo.**
+4. **Reinicia tu frontend/backend** (o vuelve a desplegar si usas Vercel, Netlify, etc.).
+
+---
+
+## **Checklist de revisión final**
+
+- [x] Variables de entorno `.env` actualizadas y sin espacios extra.
+- [x] Usuario en Supabase Auth confirmado y con contraseña conocida.
+- [x] Tabla `usuarios` sin columna `password` (solo datos extra).
+- [x] Proyecto apunta al Supabase correcto.
+- [x] Sistema reiniciado tras el cambio.
+
+---
+
+**Con esto, el login y toda la integración con Supabase funcionarán correctamente.**
+
+¿Listo para probar? Si tienes algún otro archivo de configuración que quieras revisar antes de subir, dime el nombre y lo reviso.
 
 ---
 

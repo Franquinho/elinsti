@@ -176,3 +176,6 @@ BEGIN
     END IF;
 END//
 DELIMITER ;
+
+-- Eliminar columna password si existe
+ALTER TABLE usuarios DROP COLUMN IF EXISTS password;
