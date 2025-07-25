@@ -6,7 +6,7 @@ import { securityValidators, sanitizeInput, securityHeaders } from "@/lib/securi
 
 const loginSchema = z.object({
   email: securityValidators.email,
-  password: securityValidators.password
+  password: z.string().min(1, 'La contraseña es requerida') // Validación temporal simple
 });
 
 export async function POST(request: Request) {
