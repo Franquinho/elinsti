@@ -50,35 +50,61 @@ if (!config.anonKey || config.anonKey.includes('placeholder')) {
   console.warn('⚠️  Clave anónima de Supabase no encontrada. Usando valores por defecto.');
 }
 
+// Cliente dummy más robusto
+const createDummyClient = () => {
+  const dummyResponse = { data: null, error: { message: 'Cliente no configurado' } };
+  const dummyAuthResponse = { data: null, error: { message: 'Cliente no configurado' } };
+  
+  return {
+    from: (table: string) => ({
+      select: (columns?: string) => ({
+        eq: (column: string, value: any) => Promise.resolve(dummyResponse),
+        order: (column: string, options?: any) => Promise.resolve(dummyResponse),
+        limit: (count: number) => Promise.resolve(dummyResponse),
+        single: () => Promise.resolve(dummyResponse),
+        then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+      }),
+      insert: (data: any) => Promise.resolve(dummyResponse),
+      update: (data: any) => ({
+        eq: (column: string, value: any) => Promise.resolve(dummyResponse),
+        then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+      }),
+      delete: () => ({
+        eq: (column: string, value: any) => Promise.resolve(dummyResponse),
+        then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+      }),
+      then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+    }),
+    auth: {
+      signInWithPassword: (credentials: any) => Promise.resolve(dummyAuthResponse),
+      signUp: (credentials: any) => Promise.resolve(dummyAuthResponse),
+      signOut: () => Promise.resolve({ error: { message: 'Cliente no configurado' } }),
+      getSession: () => Promise.resolve(dummyAuthResponse),
+      getUser: () => Promise.resolve(dummyAuthResponse),
+    },
+    rpc: (func: string, params?: any) => Promise.resolve(dummyResponse),
+  };
+};
+
 // Función para crear cliente de Supabase de forma segura
 const createSupabaseClient = (url: string, key: string, options?: any) => {
   try {
-    // Durante el build time, usar valores por defecto si no están disponibles
+    // Durante el build time o si no hay configuración válida, usar cliente dummy
     if (typeof window === 'undefined' && (!url || !key || url.includes('placeholder') || key.includes('placeholder'))) {
       console.warn('⚠️  Build time: Usando cliente dummy para Supabase');
-      return {
-        from: () => ({
-          select: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
-          insert: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
-          update: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
-          delete: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
-        }),
-        auth: {
-          signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
-          signUp: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
-          signOut: () => Promise.resolve({ error: { message: 'Build time - cliente no disponible' } }),
-        }
-      } as any;
+      return createDummyClient();
     }
     
+    // En runtime, si no hay configuración válida, usar cliente dummy
     if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
-      console.error('❌ Configuración de Supabase incompleta:', { url: !!url, key: !!key });
-      throw new Error('Configuración de Supabase incompleta');
+      console.warn('⚠️  Runtime: Usando cliente dummy para Supabase');
+      return createDummyClient();
     }
+    
     return createClient(url, key, options);
   } catch (error) {
     console.error('❌ Error creando cliente de Supabase:', error);
-    throw error;
+    return createDummyClient();
   }
 };
 

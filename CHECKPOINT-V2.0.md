@@ -141,7 +141,7 @@ SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key_de_supabase
 2. **Reemplaza el contenido por:**
 
    ```
-   NEXT_PUBLIC_SUPABASE_URL=https://joebhvyfcftobrngcqor.supabase.co
+ 
    NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvZWJodnlmY2JybmdjcW9yIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA0MzY5MzMsImV4cCI6MjA2NjAxMjkzM30.zyzj1pZLDboSnRYVtpYUhsrKkDAcPwVVzbohmQvBhoE
    ```
 
