@@ -53,6 +53,24 @@ if (!config.anonKey || config.anonKey.includes('placeholder')) {
 // Función para crear cliente de Supabase de forma segura
 const createSupabaseClient = (url: string, key: string, options?: any) => {
   try {
+    // Durante el build time, usar valores por defecto si no están disponibles
+    if (typeof window === 'undefined' && (!url || !key || url.includes('placeholder') || key.includes('placeholder'))) {
+      console.warn('⚠️  Build time: Usando cliente dummy para Supabase');
+      return {
+        from: () => ({
+          select: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
+          insert: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
+          update: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
+          delete: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
+        }),
+        auth: {
+          signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
+          signUp: () => Promise.resolve({ data: null, error: { message: 'Build time - cliente no disponible' } }),
+          signOut: () => Promise.resolve({ error: { message: 'Build time - cliente no disponible' } }),
+        }
+      } as any;
+    }
+    
     if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
       console.error('❌ Configuración de Supabase incompleta:', { url: !!url, key: !!key });
       throw new Error('Configuración de Supabase incompleta');
