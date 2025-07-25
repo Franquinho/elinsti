@@ -113,9 +113,11 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error("🔴 [API] Error inesperado:", error);
+    // Mostrar error detallado en producción para depuración
     return NextResponse.json({ 
       success: false, 
-      message: "Error interno del servidor" 
+      message: "Error interno del servidor",
+      error: typeof error === 'object' ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : String(error)
     }, { status: 500 });
   }
 }
