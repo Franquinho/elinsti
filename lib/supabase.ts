@@ -40,8 +40,34 @@ if (!config.anonKey || config.anonKey.includes('placeholder')) {
   console.warn('⚠️  Clave anónima de Supabase no encontrada. Usando valores por defecto.');
 }
 
+// Función para crear cliente de Supabase de forma segura
+const createSupabaseClient = (url: string, key: string, options?: any) => {
+  try {
+    if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
+      throw new Error('Configuración de Supabase incompleta');
+    }
+    return createClient(url, key, options);
+  } catch (error) {
+    console.error('❌ Error creando cliente de Supabase:', error);
+    // Retornar un cliente dummy que no hará nada
+    return {
+      from: () => ({
+        select: () => Promise.resolve({ data: null, error: { message: 'Cliente no configurado' } }),
+        insert: () => Promise.resolve({ data: null, error: { message: 'Cliente no configurado' } }),
+        update: () => Promise.resolve({ data: null, error: { message: 'Cliente no configurado' } }),
+        delete: () => Promise.resolve({ data: null, error: { message: 'Cliente no configurado' } }),
+      }),
+      auth: {
+        signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Cliente no configurado' } }),
+        signUp: () => Promise.resolve({ data: null, error: { message: 'Cliente no configurado' } }),
+        signOut: () => Promise.resolve({ error: { message: 'Cliente no configurado' } }),
+      }
+    } as any;
+  }
+};
+
 // Cliente para operaciones del frontend (con RLS)
-export const supabase = createClient(config.url, config.anonKey, {
+export const supabase = createSupabaseClient(config.url, config.anonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -50,7 +76,7 @@ export const supabase = createClient(config.url, config.anonKey, {
 });
 
 // Cliente admin para operaciones del backend (bypass RLS)
-export const supabaseAdmin = createClient(config.url, config.serviceKey, {
+export const supabaseAdmin = createSupabaseClient(config.url, config.serviceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false
