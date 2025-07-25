@@ -13,11 +13,13 @@ export async function POST(request: Request) {
   try {
     console.log("🔔 [API] Recibido POST en /api/auth/login");
     
-    // Rate limiting
-    const rateLimitResult = authRateLimiter(request as any);
-    if (rateLimitResult) {
-      console.log("🔴 [API] Rate limit excedido");
-      return rateLimitResult;
+    // Rate limiting solo en desarrollo
+    if (process.env.NODE_ENV !== 'production') {
+      const rateLimitResult = authRateLimiter(request as any);
+      if (rateLimitResult) {
+        console.log("🔴 [API] Rate limit excedido");
+        return rateLimitResult;
+      }
     }
     
     const body = await request.json();
@@ -54,7 +56,9 @@ export async function POST(request: Request) {
       console.error("🔴 [API] Error de login:", error.message);
       return NextResponse.json({ 
         success: false, 
-        message: "Credenciales inválidas" 
+        message: "Credenciales inválidas",
+        error: error.message,
+        details: error
       }, { status: 401 });
     }
 
@@ -69,7 +73,9 @@ export async function POST(request: Request) {
       console.error("🔴 [API] Error obteniendo datos de usuario:", userError);
       return NextResponse.json({ 
         success: false, 
-        message: "Error obteniendo datos de usuario" 
+        message: "Error obteniendo datos de usuario",
+        error: userError.message,
+        details: userError
       }, { status: 500 });
     }
 
@@ -117,7 +123,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: false, 
       message: "Error interno del servidor",
-      error: typeof error === 'object' ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : String(error)
+      error: typeof error === 'object' ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }

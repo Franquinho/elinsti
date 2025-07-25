@@ -82,7 +82,7 @@ export function createRateLimiter(config: RateLimitConfig) {
 // Configuraciones predefinidas
 export const authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  maxRequests: 5, // 5 intentos
+  maxRequests: 50, // 50 intentos (aumentado para desarrollo)
   message: 'Demasiados intentos de login. Intenta de nuevo en 15 minutos.'
 })
 
