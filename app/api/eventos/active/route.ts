@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 // GET - Obtener el evento activo actual
 export async function GET() {
@@ -8,7 +8,7 @@ export async function GET() {
     
     const now = new Date().toISOString();
     
-    const { data: evento, error } = await supabaseAdmin
+    const { data: evento, error } = await supabase
       .from('eventos')
       .select('*')
       .eq('activo', true)
@@ -64,7 +64,7 @@ export async function PUT(request: Request) {
     console.log("🔔 [API] Estableciendo evento como activo:", eventoId);
 
     // Primero desactivar todos los eventos
-    const { error: deactivateError } = await supabaseAdmin
+    const { error: deactivateError } = await supabase
       .from('eventos')
       .update({ activo: false })
       .eq('activo', true);
@@ -78,7 +78,7 @@ export async function PUT(request: Request) {
     }
 
     // Luego activar el evento seleccionado
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('eventos')
       .update({ activo: true })
       .eq('id', eventoId)
