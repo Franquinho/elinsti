@@ -1,38 +1,19 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { z } from "zod";
-import { authRateLimiter } from "@/lib/rate-limiter";
-import { securityValidators, sanitizeInput, securityHeaders } from "@/lib/security";
 
 const loginSchema = z.object({
-  email: securityValidators.email,
-  password: z.string().min(1, 'La contraseña es requerida') // Validación temporal simple
+  email: z.string().email('Email inválido'),
+  password: z.string().min(1, 'La contraseña es requerida')
 });
 
 export async function POST(request: Request) {
   try {
     console.log("🔔 [API] Recibido POST en /api/auth/login");
     
-    // Rate limiting solo en desarrollo
-    if (process.env.NODE_ENV !== 'production') {
-      const rateLimitResult = authRateLimiter(request as any);
-      if (rateLimitResult) {
-        console.log("🔴 [API] Rate limit excedido");
-        return rateLimitResult;
-      }
-    }
-    
     const body = await request.json();
-    
-    // Validación de tamaño de payload
-    if (JSON.stringify(body).length > 1024) {
-      return NextResponse.json({
-        success: false,
-        message: "Payload demasiado grande"
-      }, { status: 413 });
-    }
-    
     const parse = loginSchema.safeParse(body);
+    
     if (!parse.success) {
       return NextResponse.json({
         success: false,
@@ -42,9 +23,9 @@ export async function POST(request: Request) {
     }
     
     const { email, password } = parse.data;
-    const sanitizedEmail = sanitizeInput(email.toLowerCase().trim());
+    const sanitizedEmail = email.toLowerCase().trim();
     
-    console.log("🔔 [API] Datos recibidos:", { email: sanitizedEmail });
+    console.log("🔔 [API] Intentando login para:", sanitizedEmail);
 
     // Intentar autenticación con Supabase
     const { data, error } = await supabase.auth.signInWithPassword({ 
@@ -56,26 +37,22 @@ export async function POST(request: Request) {
       console.error("🔴 [API] Error de login:", error.message);
       return NextResponse.json({ 
         success: false, 
-        message: "Credenciales inválidas",
-        error: error.message,
-        details: error
+        message: "Credenciales inválidas"
       }, { status: 401 });
     }
 
-    // Obtener información adicional del usuario desde la tabla usuarios
+    // Obtener información del usuario desde la tabla usuarios
     const { data: userData, error: userError } = await supabase
       .from('usuarios')
       .select('id, nombre, rol, activo')
       .eq('email', sanitizedEmail)
       .single();
 
-    if (userError) {
+    if (userError || !userData) {
       console.error("🔴 [API] Error obteniendo datos de usuario:", userError);
       return NextResponse.json({ 
         success: false, 
-        message: "Error obteniendo datos de usuario",
-        error: userError.message,
-        details: userError
+        message: "Error obteniendo datos de usuario"
       }, { status: 500 });
     }
 
@@ -84,23 +61,13 @@ export async function POST(request: Request) {
       console.log("🔴 [API] Usuario inactivo:", sanitizedEmail);
       return NextResponse.json({ 
         success: false, 
-        message: "Usuario deshabilitado. Contacte al administrador." 
+        message: "Usuario deshabilitado" 
       }, { status: 403 });
     }
 
     console.log("🟢 [API] Login exitoso para:", sanitizedEmail);
-    
-    // Registrar el login exitoso
-    await supabase
-      .from('logs')
-      .insert({
-        usuario_id: userData.id,
-        accion: 'LOGIN_EXITOSO',
-        detalle: `Login exitoso desde ${request.headers.get('user-agent') || 'desconocido'}`
-      })
-      .catch(err => console.error("Error registrando log:", err));
 
-    const response = NextResponse.json({ 
+    return NextResponse.json({ 
       success: true, 
       user: {
         id: userData.id,
@@ -110,21 +77,11 @@ export async function POST(request: Request) {
       }
     });
 
-    // Agregar headers de seguridad
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-
-    return response;
-
   } catch (error) {
     console.error("🔴 [API] Error inesperado:", error);
-    // Mostrar error detallado en producción para depuración
     return NextResponse.json({ 
       success: false, 
-      message: "Error interno del servidor",
-      error: typeof error === 'object' ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : String(error),
-      stack: error instanceof Error ? error.stack : undefined
+      message: "Error interno del servidor"
     }, { status: 500 });
   }
 }
