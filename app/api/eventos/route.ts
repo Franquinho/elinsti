@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { EventoCreate, EventoUpdate } from "@/lib/types";
 
 // GET - Obtener todos los eventos
@@ -7,7 +7,7 @@ export async function GET() {
   try {
     console.log("🔔 [API] Obteniendo eventos...");
     
-    const { data: eventos, error } = await supabaseAdmin
+    const { data: eventos, error } = await supabase
       .from('eventos')
       .select('*')
       .order('fecha_inicio', { ascending: false });
@@ -40,6 +40,8 @@ export async function POST(request: Request) {
     const body: EventoCreate = await request.json();
     const { nombre, descripcion, fecha_inicio, fecha_fin, capacidad_maxima, precio_entrada, ubicacion, imagen_url } = body;
 
+    console.log("🔔 [API] Creando evento:", { nombre, fecha_inicio, fecha_fin });
+
     // Validaciones
     if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 1) {
       return NextResponse.json({ 
@@ -55,7 +57,19 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    if (new Date(fecha_inicio) >= new Date(fecha_fin)) {
+    // Validar formato de fechas
+    const fechaInicio = new Date(fecha_inicio);
+    const fechaFin = new Date(fecha_fin);
+
+    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "Formato de fecha inválido" 
+      }, { status: 400 });
+    }
+
+    // Validar que la fecha de fin sea posterior a la de inicio
+    if (fechaInicio >= fechaFin) {
       return NextResponse.json({ 
         success: false, 
         message: "La fecha de fin debe ser posterior a la fecha de inicio" 
@@ -63,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     // Verificar que no exista un evento con el mismo nombre en el mismo período
-    const { data: eventoExistente } = await supabaseAdmin
+    const { data: eventoExistente } = await supabase
       .from('eventos')
       .select('id')
       .eq('nombre', nombre.trim())
@@ -78,7 +92,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('eventos')
       .insert([{
         nombre: nombre.trim(),
@@ -94,7 +108,13 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("🔴 [API] Error en base de datos:", error);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al crear el evento en la base de datos" 
+      }, { status: 500 });
+    }
     
     console.log("🟢 [API] Evento creado:", data.nombre);
     return NextResponse.json({ success: true, evento: data });
@@ -103,7 +123,7 @@ export async function POST(request: Request) {
     console.error("🔴 [API] Error al crear evento:", error);
     return NextResponse.json({ 
       success: false, 
-      message: error.message 
+      message: "Error interno del servidor" 
     }, { status: 500 });
   }
 } 
