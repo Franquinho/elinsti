@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     console.log("🔔 [API] Creando evento:", { nombre, fecha_inicio, fecha_fin });
 
-    // Validaciones
+    // Validaciones básicas
     if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 1) {
       return NextResponse.json({ 
         success: false, 
@@ -76,35 +76,24 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Verificar que no exista un evento con el mismo nombre en el mismo período
-    const { data: eventoExistente } = await supabase
-      .from('eventos')
-      .select('id')
-      .eq('nombre', nombre.trim())
-      .gte('fecha_inicio', fecha_inicio)
-      .lte('fecha_fin', fecha_fin)
-      .single();
+    // Preparar datos para inserción
+    const eventoData = {
+      nombre: nombre.trim(),
+      descripcion: descripcion?.trim() || null,
+      fecha_inicio: fecha_inicio,
+      fecha_fin: fecha_fin,
+      capacidad_maxima: capacidad_maxima || null,
+      precio_entrada: precio_entrada || 0,
+      ubicacion: ubicacion?.trim() || null,
+      imagen_url: imagen_url?.trim() || null,
+      activo: true
+    };
 
-    if (eventoExistente) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "Ya existe un evento con ese nombre en el período especificado" 
-      }, { status: 400 });
-    }
+    console.log("🔔 [API] Datos del evento a insertar:", eventoData);
 
     const { data, error } = await supabase
       .from('eventos')
-      .insert([{
-        nombre: nombre.trim(),
-        descripcion: descripcion?.trim(),
-        fecha_inicio,
-        fecha_fin,
-        capacidad_maxima: capacidad_maxima || null,
-        precio_entrada: precio_entrada || 0,
-        ubicacion: ubicacion?.trim(),
-        imagen_url: imagen_url?.trim(),
-        activo: true
-      }])
+      .insert([eventoData])
       .select()
       .single();
 
@@ -112,7 +101,7 @@ export async function POST(request: Request) {
       console.error("🔴 [API] Error en base de datos:", error);
       return NextResponse.json({ 
         success: false, 
-        message: "Error al crear el evento en la base de datos" 
+        message: `Error al crear el evento: ${error.message}` 
       }, { status: 500 });
     }
     
