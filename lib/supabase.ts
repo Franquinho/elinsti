@@ -1,5 +1,11 @@
 ﻿import { createClient } from "@supabase/supabase-js";
 
+// Función para limpiar variables de entorno
+const cleanEnvVar = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  return value.trim().replace(/^["']|["']$/g, '').replace(/\r?\n/g, '');
+};
+
 // Función para obtener las credenciales según el entorno
 const getSupabaseConfig = () => {
   const env = process.env.NEXT_PUBLIC_ENV || process.env.NODE_ENV || 'development';
@@ -8,9 +14,9 @@ const getSupabaseConfig = () => {
   
   // Configuración para producción
   if (env === 'production') {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const url = cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    const anonKey = cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    const serviceKey = cleanEnvVar(process.env.SUPABASE_SERVICE_ROLE_KEY);
     
     console.log('🔧 Variables de entorno detectadas:', {
       url: url ? '✅ Configurada' : '❌ No configurada',
@@ -25,16 +31,16 @@ const getSupabaseConfig = () => {
   switch (env) {
     case 'staging':
       return {
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL_STAGING || process.env.NEXT_PUBLIC_SUPABASE_URL,
-        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY_STAGING || process.env.SUPABASE_SERVICE_ROLE_KEY,
+        url: cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_URL_STAGING || process.env.NEXT_PUBLIC_SUPABASE_URL),
+        anonKey: cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_STAGING || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+        serviceKey: cleanEnvVar(process.env.SUPABASE_SERVICE_ROLE_KEY_STAGING || process.env.SUPABASE_SERVICE_ROLE_KEY),
       };
     case 'development':
     default:
       return {
-        url: process.env.NEXT_PUBLIC_SUPABASE_URL_DEV || process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co",
-        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key",
-        serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY_DEV || process.env.SUPABASE_SERVICE_ROLE_KEY || "placeholder-service-key",
+        url: cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_URL_DEV || process.env.NEXT_PUBLIC_SUPABASE_URL) || "https://placeholder.supabase.co",
+        anonKey: cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || "placeholder-key",
+        serviceKey: cleanEnvVar(process.env.SUPABASE_SERVICE_ROLE_KEY_DEV || process.env.SUPABASE_SERVICE_ROLE_KEY) || "placeholder-service-key",
       };
   }
 };
@@ -89,19 +95,24 @@ const createDummyClient = () => {
 // Función para crear cliente de Supabase de forma segura
 const createSupabaseClient = (url: string, key: string, options?: any) => {
   try {
+    // Limpiar URL y key
+    const cleanUrl = cleanEnvVar(url);
+    const cleanKey = cleanEnvVar(key);
+    
     // Durante el build time o si no hay configuración válida, usar cliente dummy
-    if (typeof window === 'undefined' && (!url || !key || url.includes('placeholder') || key.includes('placeholder'))) {
+    if (typeof window === 'undefined' && (!cleanUrl || !cleanKey || cleanUrl.includes('placeholder') || cleanKey.includes('placeholder'))) {
       console.warn('⚠️  Build time: Usando cliente dummy para Supabase');
       return createDummyClient();
     }
     
     // En runtime, si no hay configuración válida, usar cliente dummy
-    if (!url || !key || url.includes('placeholder') || key.includes('placeholder')) {
+    if (!cleanUrl || !cleanKey || cleanUrl.includes('placeholder') || cleanKey.includes('placeholder')) {
       console.warn('⚠️  Runtime: Usando cliente dummy para Supabase');
       return createDummyClient();
     }
     
-    return createClient(url, key, options);
+    console.log('🔧 Creando cliente Supabase con URL:', cleanUrl);
+    return createClient(cleanUrl, cleanKey, options);
   } catch (error) {
     console.error('❌ Error creando cliente de Supabase:', error);
     return createDummyClient();
