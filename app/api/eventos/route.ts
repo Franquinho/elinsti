@@ -80,6 +80,7 @@ export async function POST(request: Request) {
     const eventoData = {
       nombre: nombre.trim(),
       descripcion: descripcion?.trim() || null,
+      fecha: fecha_inicio, // Columna obligatoria
       fecha_inicio: fecha_inicio,
       fecha_fin: fecha_fin,
       capacidad_maxima: capacidad_maxima || null,
