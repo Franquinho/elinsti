@@ -14,7 +14,7 @@ const comandaSchema = z.object({
   nombre_cliente: z.string().min(1, 'Nombre de cliente es requerido').max(100, 'Nombre demasiado largo'),
   productos: z.array(productoSchema).min(1, 'Debe incluir al menos un producto'),
   usuario_id: z.number().positive('ID de usuario debe ser positivo').optional()
-});
+}).strict();
 
 export async function POST(request: Request) {
   try {
