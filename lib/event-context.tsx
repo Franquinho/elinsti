@@ -87,13 +87,15 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       const response = await fetch('/api/eventos/active');
       const data = await response.json();
       
-      if (data.success) {
-        setEventoActivo(data.evento);
+      if (data.success && data.eventos && data.eventos.length > 0) {
+        setEventoActivo(data.eventos[0]); // Tomar el primer evento activo
       } else {
-        console.error('Error cargando evento activo:', data.message);
+        console.log('No hay eventos activos disponibles');
+        setEventoActivo(null);
       }
     } catch (error) {
       console.error('Error cargando evento activo:', error);
+      setEventoActivo(null);
     }
   };
 
@@ -107,7 +109,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ eventoId }),
+        body: JSON.stringify({ evento_id: eventoId }),
       });
       
       const data = await response.json();
