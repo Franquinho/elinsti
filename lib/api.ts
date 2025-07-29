@@ -78,7 +78,7 @@ class ApiClient {
 
   async updateProducto(id: number, productoData: ProductoUpdate) {
     return this.request(`productos/${id}`, {
-      method: "PATCH",
+      method: "PUT",
       body: JSON.stringify(productoData),
     })
   }

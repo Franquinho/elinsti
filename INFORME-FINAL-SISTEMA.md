@@ -1,3 +1,4 @@
+
 # 📊 INFORME FINAL DEL SISTEMA EL INSTI
 ## Auditoría Completa y Estado General
 

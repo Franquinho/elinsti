@@ -53,8 +53,8 @@ export function VentasSection() {
         
         // Cargar evento activo
         const eventoResponse = await apiClient.getEventoActivo()
-        if (eventoResponse.success && eventoResponse.evento) {
-          setEventoActivo(eventoResponse.evento)
+        if (eventoResponse.success && eventoResponse.eventos && eventoResponse.eventos.length > 0) {
+          setEventoActivo(eventoResponse.eventos[0]) // Tomar el primer evento activo
         } else {
           addNotification({
             type: "error",
