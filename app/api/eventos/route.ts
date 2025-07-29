@@ -1,6 +1,49 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { EventoCreate, EventoUpdate } from "@/lib/types";
+import { z } from "zod";
+
+// Esquemas de validación Zod
+const EventoCreateSchema = z.object({
+  nombre: z.string().min(1, "El nombre del evento es requerido").max(100, "El nombre es demasiado largo"),
+  descripcion: z.string().optional(),
+  fecha_inicio: z.string().datetime("Formato de fecha inválido"),
+  fecha_fin: z.string().datetime("Formato de fecha inválido"),
+  capacidad_maxima: z.number().positive("La capacidad debe ser un número positivo").optional(),
+  precio_entrada: z.number().min(0, "El precio no puede ser negativo").optional(),
+  ubicacion: z.string().optional(),
+  imagen_url: z.string().url("URL de imagen inválida").optional(),
+}).refine((data) => {
+  const fechaInicio = new Date(data.fecha_inicio);
+  const fechaFin = new Date(data.fecha_fin);
+  return fechaInicio < fechaFin;
+}, {
+  message: "La fecha de fin debe ser posterior a la fecha de inicio",
+  path: ["fecha_fin"]
+});
+
+const EventoUpdateSchema = z.object({
+  id: z.number().positive("ID inválido"),
+  nombre: z.string().min(1, "El nombre del evento es requerido").max(100, "El nombre es demasiado largo").optional(),
+  descripcion: z.string().optional(),
+  fecha_inicio: z.string().datetime("Formato de fecha inválido").optional(),
+  fecha_fin: z.string().datetime("Formato de fecha inválido").optional(),
+  capacidad_maxima: z.number().positive("La capacidad debe ser un número positivo").optional(),
+  precio_entrada: z.number().min(0, "El precio no puede ser negativo").optional(),
+  ubicacion: z.string().optional(),
+  imagen_url: z.string().url("URL de imagen inválida").optional(),
+  activo: z.boolean().optional(),
+}).refine((data) => {
+  if (data.fecha_inicio && data.fecha_fin) {
+    const fechaInicio = new Date(data.fecha_inicio);
+    const fechaFin = new Date(data.fecha_fin);
+    return fechaInicio < fechaFin;
+  }
+  return true;
+}, {
+  message: "La fecha de fin debe ser posterior a la fecha de inicio",
+  path: ["fecha_fin"]
+});
 
 // GET - Obtener todos los eventos
 export async function GET() {
@@ -37,49 +80,27 @@ export async function GET() {
 // POST - Crear un nuevo evento
 export async function POST(request: Request) {
   try {
-    const body: EventoCreate = await request.json();
-    const { nombre, descripcion, fecha_inicio, fecha_fin, capacidad_maxima, precio_entrada, ubicacion, imagen_url } = body;
+    const body = await request.json();
+    
+    // Validar datos con Zod
+    const validationResult = EventoCreateSchema.safeParse(body);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
+      return NextResponse.json({ 
+        success: false, 
+        message: `Datos inválidos: ${errors}` 
+      }, { status: 400 });
+    }
+
+    const { nombre, descripcion, fecha_inicio, fecha_fin, capacidad_maxima, precio_entrada, ubicacion, imagen_url } = validationResult.data;
 
     console.log("🔔 [API] Creando evento:", { nombre, fecha_inicio, fecha_fin });
-
-    // Validaciones básicas
-    if (!nombre || typeof nombre !== 'string' || nombre.trim().length < 1) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "El nombre del evento es requerido" 
-      }, { status: 400 });
-    }
-
-    if (!fecha_inicio || !fecha_fin) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "Las fechas de inicio y fin son requeridas" 
-      }, { status: 400 });
-    }
-
-    // Validar formato de fechas
-    const fechaInicio = new Date(fecha_inicio);
-    const fechaFin = new Date(fecha_fin);
-
-    if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "Formato de fecha inválido" 
-      }, { status: 400 });
-    }
-
-    // Validar que la fecha de fin sea posterior a la de inicio
-    if (fechaInicio >= fechaFin) {
-      return NextResponse.json({ 
-        success: false, 
-        message: "La fecha de fin debe ser posterior a la fecha de inicio" 
-      }, { status: 400 });
-    }
 
     // Preparar datos para inserción
     const eventoData = {
       nombre: nombre.trim(),
       descripcion: descripcion?.trim() || null,
+      fecha: fecha_inicio, // Usar fecha_inicio como fecha principal
       fecha_inicio: fecha_inicio,
       fecha_fin: fecha_fin,
       capacidad_maxima: capacidad_maxima || null,
@@ -108,7 +129,7 @@ export async function POST(request: Request) {
     console.log("🟢 [API] Evento creado:", data.nombre);
     return NextResponse.json({ success: true, evento: data });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("🔴 [API] Error al crear evento:", error);
     return NextResponse.json({ 
       success: false, 
@@ -120,14 +141,19 @@ export async function POST(request: Request) {
 // PUT - Actualizar un evento
 export async function PUT(request: Request) {
   try {
-    const { id, ...updateData } = await request.json();
+    const body = await request.json();
     
-    if (!id) {
+    // Validar datos con Zod
+    const validationResult = EventoUpdateSchema.safeParse(body);
+    if (!validationResult.success) {
+      const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
       return NextResponse.json({ 
         success: false, 
-        message: "ID del evento es requerido" 
+        message: `Datos inválidos: ${errors}` 
       }, { status: 400 });
     }
+
+    const { id, ...updateData } = validationResult.data;
 
     console.log("🔔 [API] Actualizando evento:", id);
 
@@ -149,7 +175,7 @@ export async function PUT(request: Request) {
     console.log("🟢 [API] Evento actualizado:", data.nombre);
     return NextResponse.json({ success: true, evento: data });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("🔴 [API] Error al actualizar evento:", error);
     return NextResponse.json({ 
       success: false, 
@@ -189,7 +215,7 @@ export async function DELETE(request: Request) {
     console.log("🟢 [API] Evento eliminado:", id);
     return NextResponse.json({ success: true });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("🔴 [API] Error al eliminar evento:", error);
     return NextResponse.json({ 
       success: false, 
