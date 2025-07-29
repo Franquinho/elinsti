@@ -37,16 +37,18 @@ export async function GET() {
 // PUT - Establecer un evento como activo
 export async function PUT(request: Request) {
   try {
-    const { eventoId } = await request.json();
+    const body = await request.json();
+    const { eventoId, evento_id } = body;
+    const eventId = eventoId || evento_id;
     
-    if (!eventoId) {
+    if (!eventId) {
       return NextResponse.json({ 
         success: false, 
         message: "ID del evento es requerido" 
       }, { status: 400 });
     }
 
-    console.log("🔔 [API] Estableciendo evento como activo:", eventoId);
+    console.log("🔔 [API] Estableciendo evento como activo:", eventId);
 
     // Primero desactivar todos los eventos
     const { error: deactivateError } = await supabase
@@ -66,7 +68,7 @@ export async function PUT(request: Request) {
     const { data, error } = await supabase
       .from('eventos')
       .update({ activo: true })
-      .eq('id', eventoId)
+      .eq('id', eventId)
       .select()
       .single();
 
