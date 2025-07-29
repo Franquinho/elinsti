@@ -1,55 +1,51 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { z } from "zod";
-import { sensitiveRateLimiter } from "@/lib/rate-limiter";
-import { securityValidators, sanitizeInput, securityHeaders, validatePayloadSize } from "@/lib/security";
 
 const productoSchema = z.object({
-  id: securityValidators.id,
-  cantidad: securityValidators.quantity,
-  precio: securityValidators.price
+  id: z.number().positive('ID de producto debe ser positivo'),
+  cantidad: z.number().positive('Cantidad debe ser positiva').max(999999, 'Cantidad demasiado alta'),
+  precio: z.number().positive('Precio debe ser positivo').max(999999.99, 'Precio demasiado alto')
 });
 
 const comandaSchema = z.object({
-  usuario_id: securityValidators.id,
-  evento_id: securityValidators.id,
-  total: securityValidators.price,
-  nombre_cliente: securityValidators.name,
-  productos: z.array(productoSchema).min(1, 'Debe incluir al menos un producto')
+  evento_id: z.number().positive('ID de evento debe ser positivo'),
+  total: z.number().positive('Total debe ser positivo').max(999999.99, 'Total demasiado alto'),
+  nombre_cliente: z.string().min(1, 'Nombre de cliente es requerido').max(100, 'Nombre demasiado largo'),
+  productos: z.array(productoSchema).min(1, 'Debe incluir al menos un producto'),
+  usuario_id: z.number().positive('ID de usuario debe ser positivo').optional()
 });
 
 export async function POST(request: Request) {
   try {
-    console.log("🔔 [API] Recibido POST en /api/comandas/create");
-    
-    // Rate limiting
-    const rateLimitResult = sensitiveRateLimiter(request as any);
-    if (rateLimitResult) {
-      console.log("🔴 [API] Rate limit excedido");
-      return rateLimitResult;
-    }
+    console.log("🔔 [API] Recibido POST en /api/comandas/create - DEBUG FINAL");
     
     const body = await request.json();
     
-    // Validación de tamaño de payload
-    if (!validatePayloadSize(body, 50)) { // 50KB máximo
-      return NextResponse.json({
-        success: false,
-        message: "Payload demasiado grande"
-      }, { status: 413 });
-    }
+    console.log("🔔 [API] Body recibido:", JSON.stringify(body, null, 2));
     
     const parse = comandaSchema.safeParse(body);
     if (!parse.success) {
+      console.log("🔴 [API] Validación fallida:", parse.error.errors);
+      console.log("🔴 [API] Errores detallados:", parse.error.errors.map(e => ({
+        path: e.path.join('.'),
+        message: e.message,
+        code: e.code
+      })));
       return NextResponse.json({
         success: false,
         message: "Datos inválidos",
-        errors: parse.error.errors.map(e => e.message)
+        errors: parse.error.errors.map(e => `${e.path.join('.')}: ${e.message}`),
+        debug: {
+          receivedBody: body,
+          validationErrors: parse.error.errors
+        }
       }, { status: 400 });
     }
     
-    const { usuario_id, evento_id, total, nombre_cliente, productos } = parse.data;
-    const sanitizedNombreCliente = sanitizeInput(nombre_cliente);
+    const { evento_id, total, nombre_cliente, productos, usuario_id: bodyUsuarioId } = parse.data;
+    const sanitizedNombreCliente = nombre_cliente.trim();
+    const usuario_id = bodyUsuarioId || 4; // Usar el del body o el valor por defecto
     
     console.log("🔔 [API] Datos recibidos:", { 
       usuario_id, 
@@ -60,7 +56,7 @@ export async function POST(request: Request) {
     });
 
     // Verificar que el evento existe y está activo
-    const { data: evento, error: eventoError } = await supabaseAdmin
+    const { data: evento, error: eventoError } = await supabase
       .from('eventos')
       .select('id, activo')
       .eq('id', evento_id)
@@ -82,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     // Verificar que el usuario existe
-    const { data: usuario, error: usuarioError } = await supabaseAdmin
+    const { data: usuario, error: usuarioError } = await supabase
       .from('usuarios')
       .select('id, activo')
       .eq('id', usuario_id)
@@ -103,9 +99,9 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Verificar que todos los productos existen
+    // Verificar que todos los productos existen y están activos
     const productoIds = productos.map(p => p.id);
-    const { data: productosExistentes, error: productosError } = await supabaseAdmin
+    const { data: productosExistentes, error: productosError } = await supabase
       .from('productos')
       .select('id, activo')
       .in('id', productoIds);
@@ -125,7 +121,6 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Verificar que todos los productos estén activos
     const productosInactivos = productosExistentes.filter(p => !p.activo);
     if (productosInactivos.length > 0) {
       return NextResponse.json({ 
@@ -136,20 +131,20 @@ export async function POST(request: Request) {
 
     console.log("🟢 [API] Datos válidos, creando comanda...");
 
-    // Crear la comanda
+    // Crear la comanda con la estructura correcta de Supabase
     const comandaData = {
       usuario_id,
       evento_id,
-      caja_id: 1, // Valor por defecto para caja_id
       total,
       nombre_cliente: sanitizedNombreCliente,
       estado: 'pendiente',
-      fecha_creacion: new Date().toISOString()
+      metodo_pago: null,
+      nota: null
     };
 
     console.log("🔔 [API] Datos de comanda a insertar:", comandaData);
 
-    const { data: comanda, error: comandaError } = await supabaseAdmin
+    const { data: comanda, error: comandaError } = await supabase
       .from('comandas')
       .insert(comandaData)
       .select()
@@ -157,17 +152,34 @@ export async function POST(request: Request) {
 
     if (comandaError) {
       console.error("🔴 [API] Error creando comanda:", comandaError);
+      console.error("🔴 [API] Detalles del error:", {
+        message: comandaError.message,
+        details: comandaError.details,
+        hint: comandaError.hint,
+        code: comandaError.code
+      });
+      console.error("🔴 [API] Datos que causaron el error:", comandaData);
       return NextResponse.json({ 
         success: false, 
         message: "Error al crear comanda en la base de datos",
-        details: process.env.NODE_ENV === 'development' ? comandaError.details : undefined
+        details: comandaError.message,
+        code: comandaError.code,
+        debug: {
+          data: comandaData,
+          error: {
+            message: comandaError.message,
+            code: comandaError.code,
+            details: comandaError.details,
+            hint: comandaError.hint
+          }
+        }
       }, { status: 500 });
     }
 
     console.log("🟢 [API] Comanda creada, ID:", comanda.id);
 
     // Crear los items de la comanda
-    const itemsComanda = productos.map((producto: any) => ({
+    const itemsComanda = productos.map((producto) => ({
       comanda_id: comanda.id,
       producto_id: producto.id,
       cantidad: producto.cantidad,
@@ -177,14 +189,14 @@ export async function POST(request: Request) {
 
     console.log("🔔 [API] Items a crear:", itemsComanda);
 
-    const { error: itemsError } = await supabaseAdmin
+    const { error: itemsError } = await supabase
       .from('comanda_items')
       .insert(itemsComanda);
 
     if (itemsError) {
       console.error("🔴 [API] Error creando items:", itemsError);
       // Intentar eliminar la comanda si fallan los items
-      await supabaseAdmin.from('comandas').delete().eq('id', comanda.id);
+      await supabase.from('comandas').delete().eq('id', comanda.id);
       return NextResponse.json({ 
         success: false, 
         message: "Error al crear items de comanda",
@@ -194,24 +206,22 @@ export async function POST(request: Request) {
 
     console.log("🟢 [API] Comanda creada exitosamente, ID:", comanda.id);
 
-    const response = NextResponse.json({ 
+    return NextResponse.json({ 
       success: true, 
       comanda_id: comanda.id,
       message: "Comanda creada exitosamente" 
     });
 
-    // Agregar headers de seguridad
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-
-    return response;
-
   } catch (error) {
     console.error("🔴 [API] Error inesperado:", error);
+    console.error("🔴 [API] Stack trace:", error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json({ 
       success: false, 
-      message: "Error interno del servidor" 
+      message: "Error interno del servidor",
+      debug: {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }
     }, { status: 500 });
   }
 }
