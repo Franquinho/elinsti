@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { z } from "zod";
 
 // Esquema de validación Zod para productos
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
 
     // Verificar conexión a Supabase
     console.log("🔔 [API] Verificando conexión a Supabase...");
-    if (!supabaseAdmin) {
-      console.error("🔴 [API] supabaseAdmin no está configurado");
+    if (!supabase) {
+      console.error("🔴 [API] supabase no está configurado");
       return NextResponse.json({ 
         success: false, 
         message: "Error de configuración de base de datos" 
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     // Validar que no exista un producto con el mismo nombre
     console.log("🔔 [API] Verificando producto existente...");
-    const { data: productoExistente, error: checkError } = await supabaseAdmin
+    const { data: productoExistente, error: checkError } = await supabase
       .from('productos')
       .select('id')
       .eq('nombre', nombre.trim())
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     }
 
     console.log("🔔 [API] Insertando producto en base de datos...");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('productos')
       .insert([{
         nombre: nombre.trim(),
