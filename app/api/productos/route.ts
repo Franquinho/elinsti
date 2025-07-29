@@ -13,11 +13,15 @@ const ProductoCreateSchema = z.object({
 // POST - Crear un nuevo producto
 export async function POST(request: Request) {
   try {
+    console.log("🔔 [API] Iniciando creación de producto...");
+    
     const body = await request.json();
+    console.log("🔔 [API] Body recibido:", body);
     
     // Validar datos con Zod
     const validationResult = ProductoCreateSchema.safeParse(body);
     if (!validationResult.success) {
+      console.log("🔴 [API] Validación fallida:", validationResult.error.errors);
       const errors = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ');
       return NextResponse.json({ 
         success: false, 
@@ -26,18 +30,40 @@ export async function POST(request: Request) {
     }
 
     const { nombre, precio, emoji, activo } = validationResult.data;
+    console.log("🔔 [API] Datos validados:", { nombre, precio, emoji, activo });
+
+    // Verificar conexión a Supabase
+    console.log("🔔 [API] Verificando conexión a Supabase...");
+    if (!supabaseAdmin) {
+      console.error("🔴 [API] supabaseAdmin no está configurado");
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error de configuración de base de datos" 
+      }, { status: 500 });
+    }
 
     // Validar que no exista un producto con el mismo nombre
-    const { data: productoExistente } = await supabaseAdmin
+    console.log("🔔 [API] Verificando producto existente...");
+    const { data: productoExistente, error: checkError } = await supabaseAdmin
       .from('productos')
       .select('id')
       .eq('nombre', nombre.trim())
       .single();
 
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error("🔴 [API] Error verificando producto existente:", checkError);
+      return NextResponse.json({ 
+        success: false, 
+        message: `Error verificando producto: ${checkError.message}` 
+      }, { status: 500 });
+    }
+
     if (productoExistente) {
+      console.log("🔴 [API] Producto ya existe:", productoExistente);
       return NextResponse.json({ success: false, message: "Ya existe un producto con ese nombre" }, { status: 400 });
     }
 
+    console.log("🔔 [API] Insertando producto en base de datos...");
     const { data, error } = await supabaseAdmin
       .from('productos')
       .insert([{
@@ -49,11 +75,16 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("🔴 [API] Error insertando producto:", error);
+      throw error;
+    }
+
+    console.log("🟢 [API] Producto creado exitosamente:", data);
     return NextResponse.json({ success: true, producto: data });
 
   } catch (error: unknown) {
-    console.error("Error al crear producto:", error);
+    console.error("🔴 [API] Error al crear producto:", error);
     return NextResponse.json({ 
       success: false, 
       message: error instanceof Error ? error.message : "Error interno del servidor" 
