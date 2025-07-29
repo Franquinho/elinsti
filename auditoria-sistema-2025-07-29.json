@@ -1,0 +1,477 @@
+{
+  "timestamp": "2025-07-29T23:13:56.434Z",
+  "resumen": {
+    "usuarios": {
+      "total": 3,
+      "activos": 3
+    },
+    "eventos": {
+      "total": 5,
+      "activos": 4,
+      "conEstructuraCorrecta": 5
+    },
+    "productos": {
+      "total": 8,
+      "activos": 8
+    },
+    "comandas": {
+      "total": 9,
+      "pendientes": 3,
+      "pagadas": 6,
+      "canceladas": 0
+    },
+    "comandaItems": {
+      "total": 9
+    }
+  },
+  "detalles": {
+    "usuarios": {
+      "total": 3,
+      "activos": 3,
+      "inactivos": 0,
+      "datos": [
+        {
+          "id": 4,
+          "nombre": "Admin El Insti",
+          "email": "admin@elinsti.com",
+          "rol": "administrador",
+          "activo": true,
+          "created_at": "2025-07-24T14:21:19.377785",
+          "updated_at": "2025-07-24T14:22:50.175825+00:00"
+        },
+        {
+          "id": 5,
+          "nombre": "Cajero Principal",
+          "email": "caja@elinsti.com",
+          "rol": "caja",
+          "activo": true,
+          "created_at": "2025-07-24T14:21:19.377785",
+          "updated_at": "2025-07-24T14:22:50.175825+00:00"
+        },
+        {
+          "id": 6,
+          "nombre": "Vendedor 1",
+          "email": "ventas@elinsti.com",
+          "rol": "venta",
+          "activo": true,
+          "created_at": "2025-07-24T14:21:19.377785",
+          "updated_at": "2025-07-24T14:22:50.175825+00:00"
+        }
+      ]
+    },
+    "eventos": {
+      "total": 5,
+      "activos": 4,
+      "inactivos": 1,
+      "datos": [
+        {
+          "id": 10,
+          "nombre": "Noche Bohemia - Enero 2024",
+          "fecha": "2024-01-15",
+          "estado": "activo",
+          "created_at": "2025-07-24T17:48:42.286487",
+          "activo": true,
+          "fecha_inicio": "2024-01-15T20:00:00+00:00",
+          "fecha_fin": "2024-01-16T02:00:00+00:00",
+          "descripcion": "Evento de música en vivo con artistas locales",
+          "capacidad_maxima": 150,
+          "precio_entrada": 5000,
+          "ubicacion": "Sala Principal",
+          "imagen_url": null,
+          "updated_at": "2025-07-24T17:48:42.286487+00:00"
+        },
+        {
+          "id": 11,
+          "nombre": "Concierto Acústico",
+          "fecha": "2024-01-20",
+          "estado": "activo",
+          "created_at": "2025-07-24T17:48:42.427116",
+          "activo": true,
+          "fecha_inicio": "2024-01-20T19:00:00+00:00",
+          "fecha_fin": "2024-01-20T23:00:00+00:00",
+          "descripcion": "Música acústica y poesía en ambiente íntimo",
+          "capacidad_maxima": 80,
+          "precio_entrada": 3000,
+          "ubicacion": "Jardín Trasero",
+          "imagen_url": null,
+          "updated_at": "2025-07-24T17:48:42.427116+00:00"
+        },
+        {
+          "id": 12,
+          "nombre": "Fiesta de Fin de Año",
+          "fecha": "2024-12-31",
+          "estado": "activo",
+          "created_at": "2025-07-24T17:48:42.612169",
+          "activo": false,
+          "fecha_inicio": "2024-12-31T21:00:00+00:00",
+          "fecha_fin": "2025-01-01T03:00:00+00:00",
+          "descripcion": "Celebración especial con DJ y buffet",
+          "capacidad_maxima": 200,
+          "precio_entrada": 8000,
+          "ubicacion": "Terraza Principal",
+          "imagen_url": null,
+          "updated_at": "2025-07-24T17:48:42.612169+00:00"
+        },
+        {
+          "id": 13,
+          "nombre": "Roda del Insti",
+          "fecha": "2025-07-24",
+          "estado": "activo",
+          "created_at": "2025-07-24T17:58:22.681375",
+          "activo": true,
+          "fecha_inicio": "2025-07-24T17:58:23.06+00:00",
+          "fecha_fin": "2025-07-24T21:58:23.06+00:00",
+          "descripcion": "Evento especial de música en vivo con artistas locales y ambiente bohemio",
+          "capacidad_maxima": 120,
+          "precio_entrada": 4000,
+          "ubicacion": "Sala Principal del Insti",
+          "imagen_url": null,
+          "updated_at": "2025-07-24T17:58:22.681375+00:00"
+        },
+        {
+          "id": 18,
+          "nombre": "Roda",
+          "fecha": "2025-08-01",
+          "estado": "activo",
+          "created_at": "2025-07-29T14:04:31.959595",
+          "activo": true,
+          "fecha_inicio": "2025-08-01T22:00:00+00:00",
+          "fecha_fin": "2025-08-02T02:00:00+00:00",
+          "descripcion": "Roda",
+          "capacidad_maxima": 250,
+          "precio_entrada": 7000,
+          "ubicacion": "Roda",
+          "imagen_url": null,
+          "updated_at": "2025-07-29T14:04:31.959595+00:00"
+        }
+      ]
+    },
+    "productos": {
+      "total": 8,
+      "activos": 8,
+      "inactivos": 0,
+      "datos": [
+        {
+          "id": 14,
+          "nombre": "Cerveza Nacional",
+          "precio": 2500,
+          "emoji": "🍺",
+          "activo": true,
+          "created_at": "2025-06-30T18:58:28.093824",
+          "updated_at": "2025-06-30T19:26:54.55118+00:00"
+        },
+        {
+          "id": 15,
+          "nombre": "Cerveza Importada",
+          "precio": 3500,
+          "emoji": "🍺",
+          "activo": true,
+          "created_at": "2025-06-30T18:58:28.093824",
+          "updated_at": "2025-06-30T19:26:54.55118+00:00"
+        },
+        {
+          "id": 16,
+          "nombre": "Vino Tinto",
+          "precio": 4500,
+          "emoji": "🍷",
+          "activo": true,
+          "created_at": "2025-06-30T18:58:28.093824",
+          "updated_at": "2025-06-30T19:26:54.55118+00:00"
+        },
+        {
+          "id": 18,
+          "nombre": "Empanada de Carne",
+          "precio": 800,
+          "emoji": "🥟",
+          "activo": true,
+          "created_at": "2025-06-30T18:58:28.093824",
+          "updated_at": "2025-06-30T19:26:54.55118+00:00"
+        },
+        {
+          "id": 19,
+          "nombre": "Empanada de Pollo",
+          "precio": 750,
+          "emoji": "🥟",
+          "activo": true,
+          "created_at": "2025-06-30T18:58:28.093824",
+          "updated_at": "2025-06-30T19:26:54.55118+00:00"
+        },
+        {
+          "id": 21,
+          "nombre": "Agua Mineral",
+          "precio": 500,
+          "emoji": "💧",
+          "activo": true,
+          "created_at": "2025-06-30T18:58:28.093824",
+          "updated_at": "2025-06-30T19:26:54.55118+00:00"
+        },
+        {
+          "id": 23,
+          "nombre": "hamburguesa",
+          "precio": 8000,
+          "emoji": "🍔",
+          "activo": true,
+          "created_at": "2025-07-29T14:03:39.223671",
+          "updated_at": "2025-07-29T14:03:39.223671+00:00"
+        },
+        {
+          "id": 24,
+          "nombre": "Juguito",
+          "precio": 5000,
+          "emoji": "🧃",
+          "activo": true,
+          "created_at": "2025-07-29T22:52:57.861978",
+          "updated_at": "2025-07-29T22:52:57.861978+00:00"
+        }
+      ]
+    },
+    "comandas": {
+      "total": 10,
+      "pendientes": 4,
+      "pagadas": 6,
+      "canceladas": 0,
+      "datos": [
+        {
+          "id": 23,
+          "usuario_id": 4,
+          "evento_id": 18,
+          "nombre_cliente": "Cliente Test CRUD",
+          "total": 3000,
+          "estado": "pagado",
+          "metodo_pago": "efectivo",
+          "nota": "Test CRUD",
+          "fecha_creacion": "2025-07-29T23:02:40.00132",
+          "fecha_actualizacion": "2025-07-29T23:02:40.433",
+          "created_at": "2025-07-29T23:02:40.00132+00:00",
+          "updated_at": "2025-07-29T23:02:40.76245+00:00"
+        },
+        {
+          "id": 24,
+          "usuario_id": 4,
+          "evento_id": 18,
+          "nombre_cliente": "Cliente Auditoría",
+          "total": 5000,
+          "estado": "pagado",
+          "metodo_pago": "efectivo",
+          "nota": "Prueba de auditoría",
+          "fecha_creacion": "2025-07-29T23:11:39.452662",
+          "fecha_actualizacion": "2025-07-29T23:11:40.098",
+          "created_at": "2025-07-29T23:11:39.452662+00:00",
+          "updated_at": "2025-07-29T23:11:40.175973+00:00"
+        },
+        {
+          "id": 14,
+          "usuario_id": 4,
+          "evento_id": 10,
+          "nombre_cliente": "Test Cliente",
+          "total": 5000,
+          "estado": "pendiente",
+          "metodo_pago": null,
+          "nota": null,
+          "fecha_creacion": "2025-07-29T21:58:39.467",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T21:58:40.067623+00:00",
+          "updated_at": "2025-07-29T21:58:40.067623+00:00"
+        },
+        {
+          "id": 15,
+          "usuario_id": 4,
+          "evento_id": 10,
+          "nombre_cliente": "Cliente Test Flow",
+          "total": 5000,
+          "estado": "pagado",
+          "metodo_pago": "efectivo",
+          "nota": null,
+          "fecha_creacion": "2025-07-29T22:06:57.636545",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T22:06:57.636545+00:00",
+          "updated_at": "2025-07-29T22:06:58.059853+00:00"
+        },
+        {
+          "id": 17,
+          "usuario_id": 4,
+          "evento_id": 10,
+          "nombre_cliente": "Cliente Test Flow",
+          "total": 5000,
+          "estado": "pagado",
+          "metodo_pago": "efectivo",
+          "nota": null,
+          "fecha_creacion": "2025-07-29T22:45:24.399624",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T22:45:24.399624+00:00",
+          "updated_at": "2025-07-29T22:45:24.835805+00:00"
+        },
+        {
+          "id": 18,
+          "usuario_id": 4,
+          "evento_id": 10,
+          "nombre_cliente": "Cliente Test Flow",
+          "total": 5000,
+          "estado": "pagado",
+          "metodo_pago": "efectivo",
+          "nota": null,
+          "fecha_creacion": "2025-07-29T22:46:43.211168",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T22:46:43.211168+00:00",
+          "updated_at": "2025-07-29T22:46:43.65979+00:00"
+        },
+        {
+          "id": 19,
+          "usuario_id": 4,
+          "evento_id": 18,
+          "nombre_cliente": "Test Cliente",
+          "total": 7000,
+          "estado": "pendiente",
+          "metodo_pago": null,
+          "nota": null,
+          "fecha_creacion": "2025-07-29T23:00:07.69807",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T23:00:07.69807+00:00",
+          "updated_at": "2025-07-29T23:00:07.69807+00:00"
+        },
+        {
+          "id": 20,
+          "usuario_id": 4,
+          "evento_id": 18,
+          "nombre_cliente": "Fran",
+          "total": 7500,
+          "estado": "pendiente",
+          "metodo_pago": null,
+          "nota": null,
+          "fecha_creacion": "2025-07-29T23:01:03.74031",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T23:01:03.74031+00:00",
+          "updated_at": "2025-07-29T23:01:03.74031+00:00"
+        },
+        {
+          "id": 21,
+          "usuario_id": 4,
+          "evento_id": 18,
+          "nombre_cliente": "Cliente API Test",
+          "total": 1000,
+          "estado": "pendiente",
+          "metodo_pago": null,
+          "nota": null,
+          "fecha_creacion": "2025-07-29T23:01:10.820076",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T23:01:10.820076+00:00",
+          "updated_at": "2025-07-29T23:01:10.820076+00:00"
+        },
+        {
+          "id": 22,
+          "usuario_id": 4,
+          "evento_id": 10,
+          "nombre_cliente": "Cliente Test Flow",
+          "total": 5000,
+          "estado": "pagado",
+          "metodo_pago": "efectivo",
+          "nota": null,
+          "fecha_creacion": "2025-07-29T23:01:18.956047",
+          "fecha_actualizacion": null,
+          "created_at": "2025-07-29T23:01:18.956047+00:00",
+          "updated_at": "2025-07-29T23:01:19.739786+00:00"
+        }
+      ]
+    },
+    "comandaItems": {
+      "total": 9,
+      "datos": [
+        {
+          "id": 28,
+          "comanda_id": 15,
+          "producto_id": 14,
+          "cantidad": 2,
+          "precio_unitario": 2500,
+          "subtotal": 5000,
+          "created_at": "2025-07-29T22:06:57.736399"
+        },
+        {
+          "id": 30,
+          "comanda_id": 17,
+          "producto_id": 14,
+          "cantidad": 2,
+          "precio_unitario": 2500,
+          "subtotal": 5000,
+          "created_at": "2025-07-29T22:45:24.508275"
+        },
+        {
+          "id": 31,
+          "comanda_id": 18,
+          "producto_id": 14,
+          "cantidad": 2,
+          "precio_unitario": 2500,
+          "subtotal": 5000,
+          "created_at": "2025-07-29T22:46:43.317362"
+        },
+        {
+          "id": 32,
+          "comanda_id": 19,
+          "producto_id": 21,
+          "cantidad": 2,
+          "precio_unitario": 3500,
+          "subtotal": 7000,
+          "created_at": "2025-07-29T23:00:08.099904"
+        },
+        {
+          "id": 33,
+          "comanda_id": 20,
+          "producto_id": 14,
+          "cantidad": 3,
+          "precio_unitario": 2500,
+          "subtotal": 7500,
+          "created_at": "2025-07-29T23:01:04.167287"
+        },
+        {
+          "id": 34,
+          "comanda_id": 21,
+          "producto_id": 21,
+          "cantidad": 2,
+          "precio_unitario": 500,
+          "subtotal": 1000,
+          "created_at": "2025-07-29T23:01:11.009286"
+        },
+        {
+          "id": 35,
+          "comanda_id": 22,
+          "producto_id": 14,
+          "cantidad": 2,
+          "precio_unitario": 2500,
+          "subtotal": 5000,
+          "created_at": "2025-07-29T23:01:19.156865"
+        },
+        {
+          "id": 36,
+          "comanda_id": 23,
+          "producto_id": 21,
+          "cantidad": 2,
+          "precio_unitario": 1500,
+          "subtotal": 3000,
+          "created_at": "2025-07-29T23:02:40.152662"
+        },
+        {
+          "id": 37,
+          "comanda_id": 24,
+          "producto_id": 21,
+          "cantidad": 2,
+          "precio_unitario": 2500,
+          "subtotal": 5000,
+          "created_at": "2025-07-29T23:11:39.631831"
+        }
+      ]
+    }
+  },
+  "problemas": [],
+  "soluciones": [
+    "Comanda huérfana 14 eliminada",
+    "Producto de prueba creado: 27",
+    "Evento de prueba creado: 26",
+    "Comanda de prueba creada: 25",
+    "Estado de comanda 25 actualizado",
+    "Comanda de prueba 25 eliminada",
+    "Evento de prueba 26 eliminado",
+    "Producto de prueba 27 eliminado"
+  ],
+  "recomendaciones": [
+    "✅ El sistema está funcionando correctamente"
+  ]
+}

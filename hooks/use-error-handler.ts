@@ -1,165 +1,101 @@
-import { useState, useCallback } from 'react'
+import { useToast } from './use-toast';
 
-export interface ErrorInfo {
-  message: string
-  type: 'error' | 'warning' | 'info'
-  details?: string
-  code?: number
+interface ErrorHandlerOptions {
+  title?: string;
+  defaultMessage?: string;
+  duration?: number;
 }
 
-export function useErrorHandler() {
-  const [error, setError] = useState<ErrorInfo | null>(null)
+export const useErrorHandler = () => {
+  const { toast } = useToast();
 
-  // Traducir errores de API a mensajes amigables
-  const translateApiError = useCallback((status: number, message: string, details?: any): ErrorInfo => {
-    switch (status) {
-      case 400:
-        return {
-          message: 'Datos incorrectos. Por favor, verifica la información ingresada.',
-          type: 'error',
-          details: message,
-          code: status
-        }
-      
-      case 401:
-        return {
-          message: 'Credenciales incorrectas. Verifica tu email y contraseña.',
-          type: 'error',
-          details: message,
-          code: status
-        }
-      
-      case 403:
-        return {
-          message: 'No tienes permisos para realizar esta acción.',
-          type: 'error',
-          details: message,
-          code: status
-        }
-      
-      case 404:
-        return {
-          message: 'Recurso no encontrado. Intenta recargar la página.',
-          type: 'error',
-          details: message,
-          code: status
-        }
-      
-      case 429:
-        return {
-          message: 'Demasiadas peticiones. Espera un momento antes de intentar nuevamente.',
-          type: 'warning',
-          details: message,
-          code: status
-        }
-      
-      case 413:
-        return {
-          message: 'Datos demasiado grandes. Reduce la cantidad de información.',
-          type: 'error',
-          details: message,
-          code: status
-        }
-      
-      case 500:
-      case 502:
-      case 503:
-      case 504:
-        return {
-          message: 'Error del servidor. Intenta nuevamente en unos minutos.',
-          type: 'error',
-          details: 'Error interno del servidor',
-          code: status
-        }
-      
-      default:
-        return {
-          message: 'Error inesperado. Contacta al administrador.',
-          type: 'error',
-          details: message,
-          code: status
-        }
-    }
-  })
+  const handleError = (error: unknown, options: ErrorHandlerOptions = {}) => {
+    const {
+      title = "🔴 Error",
+      defaultMessage = "Ocurrió un error inesperado",
+      duration = 5000
+    } = options;
 
-  // Manejar errores de red
-  const handleNetworkError = useCallback((error: any): ErrorInfo => {
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      return {
-        message: 'Error de conexión. Verifica tu conexión a internet.',
-        type: 'error',
-        details: 'No se pudo conectar con el servidor'
+    let errorMessage = defaultMessage;
+
+    // Determinar el tipo de error y extraer el mensaje apropiado
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (error && typeof error === 'object' && 'message' in error) {
+      errorMessage = String((error as { message: unknown }).message);
+    } else if (error && typeof error === 'object' && 'status' in error) {
+      const status = (error as { status: number }).status;
+      switch (status) {
+        case 400:
+          errorMessage = "Datos incorrectos. Verifica la información ingresada.";
+          break;
+        case 401:
+          errorMessage = "No autorizado. Inicia sesión nuevamente.";
+          break;
+        case 403:
+          errorMessage = "Acceso denegado. No tienes permisos para esta acción.";
+          break;
+        case 404:
+          errorMessage = "Recurso no encontrado.";
+          break;
+        case 429:
+          errorMessage = "Demasiadas peticiones. Espera un momento antes de intentar nuevamente.";
+          break;
+        case 500:
+          errorMessage = "Error del servidor. Intenta nuevamente en unos minutos.";
+          break;
+        default:
+          errorMessage = `Error ${status}: ${defaultMessage}`;
       }
+    } else if (typeof error === 'string') {
+      errorMessage = error;
     }
-    
-    if (error.name === 'AbortError') {
-      return {
-        message: 'La petición fue cancelada.',
-        type: 'warning',
-        details: 'Operación interrumpida'
-      }
-    }
-    
-    return {
-      message: 'Error de conexión inesperado.',
-      type: 'error',
-      details: error.message
-    }
-  }, [])
 
-  // Manejar errores de validación
-  const handleValidationError = useCallback((errors: string[]): ErrorInfo => {
-    return {
-      message: 'Por favor, corrige los siguientes errores:',
-      type: 'error',
-      details: errors.join(', ')
-    }
-  }, [])
+    // Mostrar el toast de error
+    toast({
+      title,
+      description: errorMessage,
+      duration,
+      variant: "destructive"
+    });
 
-  // Función principal para manejar errores
-  const handleError = useCallback((error: any): ErrorInfo => {
-    console.error('Error capturado:', error)
-    
-    // Si es una respuesta de API
-    if (error.status && error.message) {
-      return translateApiError(error.status, error.message, error.details)
-    }
-    
-    // Si es un error de red
-    if (error.name === 'TypeError' || error.name === 'AbortError') {
-      return handleNetworkError(error)
-    }
-    
-    // Si es un error de validación
-    if (Array.isArray(error)) {
-      return handleValidationError(error)
-    }
-    
-    // Error genérico
-    return {
-      message: 'Ha ocurrido un error inesperado.',
-      type: 'error',
-      details: error.message || 'Error desconocido'
-    }
-  }, [translateApiError, handleNetworkError, handleValidationError])
+    // Log del error para debugging
+    console.error('Error manejado:', {
+      error,
+      message: errorMessage,
+      timestamp: new Date().toISOString()
+    });
+  };
 
-  // Limpiar error
-  const clearError = useCallback(() => {
-    setError(null)
-  }, [])
+  const handleNetworkError = (error: unknown) => {
+    handleError(error, {
+      title: "🌐 Error de Conexión",
+      defaultMessage: "Error de conexión. Verifica tu conexión a internet.",
+      duration: 7000
+    });
+  };
 
-  // Establecer error manualmente
-  const setErrorManually = useCallback((errorInfo: ErrorInfo) => {
-    setError(errorInfo)
-  }, [])
+  const handleValidationError = (errors: string[]) => {
+    toast({
+      title: "⚠️ Datos Inválidos",
+      description: errors.join(', '),
+      duration: 5000,
+      variant: "destructive"
+    });
+  };
+
+  const handleApiError = (error: unknown, endpoint?: string) => {
+    handleError(error, {
+      title: "🔌 Error de API",
+      defaultMessage: `Error en ${endpoint || 'la API'}. Intenta nuevamente.`,
+      duration: 6000
+    });
+  };
 
   return {
-    error,
     handleError,
-    clearError,
-    setErrorManually,
-    translateApiError,
     handleNetworkError,
-    handleValidationError
-  }
-} 
+    handleValidationError,
+    handleApiError
+  };
+}; 

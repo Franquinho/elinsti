@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { data: comandas, error } = await supabaseAdmin
+    console.log("🔔 [API] Obteniendo lista de comandas...");
+    
+    const { data: comandas, error } = await supabase
       .from('comandas')
       .select(`
         *,
@@ -21,19 +23,20 @@ export async function GET() {
       .order('fecha_creacion', { ascending: false });
 
     if (error) {
-      console.error("Error obteniendo comandas:", error);
+      console.error("🔴 [API] Error obteniendo comandas:", error);
       return NextResponse.json({ 
         success: false, 
         message: "Error al obtener comandas" 
       }, { status: 500 });
     }
 
+    console.log("🟢 [API] Comandas obtenidas:", comandas?.length || 0, "comandas");
     return NextResponse.json({ 
       success: true, 
       comandas: comandas || [] 
     });
   } catch (error) {
-    console.error("Error inesperado:", error);
+    console.error("🔴 [API] Error inesperado:", error);
     return NextResponse.json({ 
       success: false, 
       message: "Error interno del servidor" 

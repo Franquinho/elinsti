@@ -1,5 +1,7 @@
 "use client"
 
+import type { ProductoCreate, ProductoUpdate, EventoCreate, ComandaCreate } from './types';
+
 // Base para API Routes de Next.js
 const API_BASE_URL = "/api"
 
@@ -67,14 +69,14 @@ class ApiClient {
     return this.request("productos/admin")
   }
 
-  async createProducto(productoData: any) {
+  async createProducto(productoData: ProductoCreate) {
     return this.request("productos", {
       method: "POST",
       body: JSON.stringify(productoData),
     })
   }
 
-  async updateProducto(id: number, productoData: any) {
+  async updateProducto(id: number, productoData: ProductoUpdate) {
     return this.request(`productos/${id}`, {
       method: "PATCH",
       body: JSON.stringify(productoData),
@@ -92,7 +94,7 @@ class ApiClient {
     return this.request("eventos")
   }
 
-  async createEvento(eventoData: any) {
+  async createEvento(eventoData: EventoCreate) {
     return this.request("eventos", {
       method: "POST",
       body: JSON.stringify(eventoData),
@@ -115,7 +117,7 @@ class ApiClient {
   }
 
   // Comandas
-  async createComanda(comandaData: any) {
+  async createComanda(comandaData: ComandaCreate) {
     return this.request("comandas/create", {
       method: "POST",
       body: JSON.stringify(comandaData),

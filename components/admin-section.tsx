@@ -104,7 +104,7 @@ export function AdminSection() {
         });
       }
       setEstadisticas(statsRes.stats || initialStats);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error cargando datos:", error);
       toast({ 
         title: "Error", 
@@ -136,11 +136,11 @@ export function AdminSection() {
       } else {
         throw new Error(res.message);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error actualizando producto:", error)
       toast({ 
         title: "Error", 
-        description: `No se pudo actualizar el producto: ${error.message}`, 
+        description: `No se pudo actualizar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
         variant: "destructive" 
       });
     }
@@ -199,11 +199,11 @@ export function AdminSection() {
       if (!res.success) {
         throw new Error(res.message);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error en ${action} producto:`, error);
       toast({ 
         title: "Error", 
-        description: `No se pudo ${action === 'create' ? 'crear' : 'actualizar'} el producto: ${error.message}`, 
+        description: `No se pudo ${action === 'create' ? 'crear' : 'actualizar'} el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
         variant: "destructive" 
       });
     } finally {
@@ -257,11 +257,11 @@ export function AdminSection() {
       } else {
         throw new Error(res.message);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creando evento:", error);
       toast({ 
         title: "Error", 
-        description: `No se pudo crear el evento: ${error.message}`, 
+        description: `No se pudo crear el evento: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
         variant: "destructive" 
       });
     } finally {
@@ -282,11 +282,11 @@ export function AdminSection() {
       } else {
         throw new Error(res.message);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error eliminando producto:", error);
       toast({ 
         title: "Error", 
-        description: `No se pudo eliminar el producto: ${error.message}`, 
+        description: `No se pudo eliminar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
         variant: "destructive" 
       });
     }

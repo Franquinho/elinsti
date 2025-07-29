@@ -300,4 +300,109 @@ export interface ReporteProductos {
   cantidad_vendida: number;
   total_ventas: number;
   precio_promedio: number;
-} 
+}
+
+// Tipos específicos para Supabase
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+  serviceKey?: string;
+}
+
+export interface SupabaseOptions {
+  auth?: {
+    autoRefreshToken?: boolean;
+    persistSession?: boolean;
+    detectSessionInUrl?: boolean;
+  };
+}
+
+export interface SupabaseCredentials {
+  email: string;
+  password: string;
+}
+
+export interface SupabaseAuthResponse {
+  data: {
+    user?: {
+      id: string;
+      email: string;
+      user_metadata?: Record<string, unknown>;
+    } | null;
+    session?: {
+      access_token: string;
+      refresh_token: string;
+      expires_at: number;
+    } | null;
+  } | null;
+  error: {
+    message: string;
+    status?: number;
+  } | null;
+}
+
+export interface SupabaseResponse<T = unknown> {
+  data: T | null;
+  error: {
+    message: string;
+    details?: string;
+    hint?: string;
+    code?: string;
+  } | null;
+}
+
+export interface SupabaseQueryBuilder<T = unknown> {
+  select: (columns?: string) => SupabaseSelectBuilder<T>;
+  insert: (data: T | T[]) => Promise<SupabaseResponse<T>>;
+  update: (data: Partial<T>) => SupabaseUpdateBuilder<T>;
+  delete: () => SupabaseDeleteBuilder<T>;
+  then: (callback: (response: SupabaseResponse<T>) => void) => Promise<SupabaseResponse<T>>;
+}
+
+export interface SupabaseSelectBuilder<T = unknown> {
+  eq: (column: string, value: string | number | boolean) => Promise<SupabaseResponse<T[]>>;
+  order: (column: string, options?: { ascending?: boolean }) => SupabaseSelectBuilder<T>;
+  limit: (count: number) => Promise<SupabaseResponse<T[]>>;
+  single: () => Promise<SupabaseResponse<T>>;
+  then: (callback: (response: SupabaseResponse<T[]>) => void) => Promise<SupabaseResponse<T[]>>;
+}
+
+export interface SupabaseUpdateBuilder<T = unknown> {
+  eq: (column: string, value: string | number | boolean) => Promise<SupabaseResponse<T>>;
+  then: (callback: (response: SupabaseResponse<T>) => void) => Promise<SupabaseResponse<T>>;
+}
+
+export interface SupabaseDeleteBuilder<T = unknown> {
+  eq: (column: string, value: string | number | boolean) => Promise<SupabaseResponse<T>>;
+  then: (callback: (response: SupabaseResponse<T>) => void) => Promise<SupabaseResponse<T>>;
+}
+
+export interface SupabaseAuth {
+  signInWithPassword: (credentials: SupabaseCredentials) => Promise<SupabaseAuthResponse>;
+  signUp: (credentials: SupabaseCredentials) => Promise<SupabaseAuthResponse>;
+  signOut: () => Promise<{ error: { message: string } | null }>;
+  getSession: () => Promise<SupabaseAuthResponse>;
+  getUser: () => Promise<SupabaseAuthResponse>;
+}
+
+export interface SupabaseClient {
+  from: <T = unknown>(table: string) => SupabaseQueryBuilder<T>;
+  auth: SupabaseAuth;
+  rpc: (func: string, params?: Record<string, unknown>) => Promise<SupabaseResponse<unknown>>;
+}
+
+export interface DummyResponse {
+  data: null;
+  error: { message: string };
+}
+
+export interface DummyAuthResponse {
+  data: null;
+  error: { message: string };
+}
+
+export interface DummyClient extends SupabaseClient {}
+
+// Tipos para callbacks
+export type SupabaseCallback<T = unknown> = (response: SupabaseResponse<T>) => void;
+export type SupabaseAuthCallback = (response: SupabaseAuthResponse) => void; 

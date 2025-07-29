@@ -1,4 +1,17 @@
 ﻿import { createClient } from "@supabase/supabase-js";
+import type {
+  SupabaseConfig,
+  SupabaseOptions,
+  SupabaseCredentials,
+  SupabaseAuthResponse,
+  SupabaseResponse,
+  SupabaseClient,
+  DummyResponse,
+  DummyAuthResponse,
+  DummyClient,
+  SupabaseCallback,
+  SupabaseAuthCallback
+} from "./types";
 
 // Función para limpiar variables de entorno
 const cleanEnvVar = (value: string | undefined): string | undefined => {
@@ -57,43 +70,43 @@ if (!config.anonKey || config.anonKey.includes('placeholder')) {
 }
 
 // Cliente dummy más robusto
-const createDummyClient = () => {
-  const dummyResponse = { data: null, error: { message: 'Cliente no configurado' } };
-  const dummyAuthResponse = { data: null, error: { message: 'Cliente no configurado' } };
+const createDummyClient = (): DummyClient => {
+  const dummyResponse: DummyResponse = { data: null, error: { message: 'Cliente no configurado' } };
+  const dummyAuthResponse: DummyAuthResponse = { data: null, error: { message: 'Cliente no configurado' } };
   
   return {
-    from: (table: string) => ({
+    from: <T = unknown>(table: string) => ({
       select: (columns?: string) => ({
-        eq: (column: string, value: any) => Promise.resolve(dummyResponse),
-        order: (column: string, options?: any) => Promise.resolve(dummyResponse),
-        limit: (count: number) => Promise.resolve(dummyResponse),
-        single: () => Promise.resolve(dummyResponse),
-        then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+        eq: (column: string, value: string | number | boolean) => Promise.resolve(dummyResponse as SupabaseResponse<T[]>),
+        order: (column: string, options?: { ascending?: boolean }) => Promise.resolve(dummyResponse as SupabaseResponse<T[]>),
+        limit: (count: number) => Promise.resolve(dummyResponse as SupabaseResponse<T[]>),
+        single: () => Promise.resolve(dummyResponse as SupabaseResponse<T>),
+        then: (callback: SupabaseCallback<T[]>) => Promise.resolve(dummyResponse as SupabaseResponse<T[]>).then(callback),
       }),
-      insert: (data: any) => Promise.resolve(dummyResponse),
-      update: (data: any) => ({
-        eq: (column: string, value: any) => Promise.resolve(dummyResponse),
-        then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+      insert: (data: T | T[]) => Promise.resolve(dummyResponse as SupabaseResponse<T>),
+      update: (data: Partial<T>) => ({
+        eq: (column: string, value: string | number | boolean) => Promise.resolve(dummyResponse as SupabaseResponse<T>),
+        then: (callback: SupabaseCallback<T>) => Promise.resolve(dummyResponse as SupabaseResponse<T>).then(callback),
       }),
       delete: () => ({
-        eq: (column: string, value: any) => Promise.resolve(dummyResponse),
-        then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+        eq: (column: string, value: string | number | boolean) => Promise.resolve(dummyResponse as SupabaseResponse<T>),
+        then: (callback: SupabaseCallback<T>) => Promise.resolve(dummyResponse as SupabaseResponse<T>).then(callback),
       }),
-      then: (callback: any) => Promise.resolve(dummyResponse).then(callback),
+      then: (callback: SupabaseCallback<T>) => Promise.resolve(dummyResponse as SupabaseResponse<T>).then(callback),
     }),
     auth: {
-      signInWithPassword: (credentials: any) => Promise.resolve(dummyAuthResponse),
-      signUp: (credentials: any) => Promise.resolve(dummyAuthResponse),
+      signInWithPassword: (credentials: SupabaseCredentials) => Promise.resolve(dummyAuthResponse),
+      signUp: (credentials: SupabaseCredentials) => Promise.resolve(dummyAuthResponse),
       signOut: () => Promise.resolve({ error: { message: 'Cliente no configurado' } }),
       getSession: () => Promise.resolve(dummyAuthResponse),
       getUser: () => Promise.resolve(dummyAuthResponse),
     },
-    rpc: (func: string, params?: any) => Promise.resolve(dummyResponse),
+    rpc: (func: string, params?: Record<string, unknown>) => Promise.resolve(dummyResponse),
   };
 };
 
 // Función para crear cliente de Supabase de forma segura
-const createSupabaseClient = (url: string, key: string, options?: any) => {
+const createSupabaseClient = (url: string, key: string, options?: SupabaseOptions): SupabaseClient => {
   try {
     // Limpiar URL y key
     const cleanUrl = cleanEnvVar(url);
@@ -112,7 +125,7 @@ const createSupabaseClient = (url: string, key: string, options?: any) => {
     }
     
     console.log('🔧 Creando cliente Supabase con URL:', cleanUrl);
-    return createClient(cleanUrl, cleanKey, options);
+    return createClient(cleanUrl, cleanKey, options) as SupabaseClient;
   } catch (error) {
     console.error('❌ Error creando cliente de Supabase:', error);
     return createDummyClient();

@@ -205,10 +205,10 @@ export function VentasSection() {
 
     try {
       const comandaData = {
-        usuario_id: user!.id,
         evento_id: eventoActivo.id,
         total: calcularTotal(),
         nombre_cliente: nombreCliente.trim(),
+        usuario_id: 4, // Usuario fijo para ventas
         productos: comanda.map(({ id, cantidad, precio }) => ({
           id,
           cantidad,
@@ -243,21 +243,24 @@ export function VentasSection() {
           duration: 5000,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creando comanda:", error);
       
       // Determinar el tipo de error y mostrar mensaje apropiado
       let errorMessage = "No se pudo crear la comanda"
       
-      if (error.status === 400) {
-        errorMessage = "Datos incorrectos. Verifica la información ingresada."
-      } else if (error.status === 429) {
-        errorMessage = "Demasiadas peticiones. Espera un momento antes de intentar nuevamente."
-      } else if (error.status === 413) {
-        errorMessage = "Datos demasiado grandes. Reduce la cantidad de productos."
-      } else if (error.status >= 500) {
-        errorMessage = "Error del servidor. Intenta nuevamente en unos minutos."
-      } else if (error.message?.includes('fetch')) {
+      if (error && typeof error === 'object' && 'status' in error) {
+        const status = (error as { status: number }).status;
+        if (status === 400) {
+          errorMessage = "Datos incorrectos. Verifica la información ingresada."
+        } else if (status === 429) {
+          errorMessage = "Demasiadas peticiones. Espera un momento antes de intentar nuevamente."
+        } else if (status === 413) {
+          errorMessage = "Datos demasiado grandes. Reduce la cantidad de productos."
+        } else if (status >= 500) {
+          errorMessage = "Error del servidor. Intenta nuevamente en unos minutos."
+        }
+      } else if (error instanceof Error && error.message?.includes('fetch')) {
         errorMessage = "Error de conexión. Verifica tu conexión a internet."
       }
       

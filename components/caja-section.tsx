@@ -31,8 +31,10 @@ import {
 import { api } from '../lib/api';
 import { useToast } from '../hooks/use-toast';
 import { useOfflineSync } from '../hooks/use-offline-sync';
+import { useErrorHandler } from '../hooks/use-error-handler';
 import { OfflineIndicator } from './offline-indicator';
 import { cn } from '../lib/utils';
+import type { Comanda as ComandaType, ComandaUpdate, ComandaCreate } from '../lib/types';
 
 interface Comanda {
   id: string;
@@ -63,6 +65,13 @@ interface CajaStats {
   invitacion: number;
 }
 
+interface PaymentData {
+  estado: 'pendiente' | 'pagado' | 'cancelado';
+  metodo_pago: 'efectivo' | 'transferencia' | 'invitacion';
+  nota?: string;
+  total: number;
+}
+
 export function CajaSection() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'todos' | 'pendiente' | 'pagado' | 'cancelado'>('todos');
@@ -75,6 +84,7 @@ export function CajaSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { createOfflineComanda, processOfflinePayment, syncStatus } = useOfflineSync();
+  const { handleError, handleValidationError, handleApiError } = useErrorHandler();
 
   // Query para obtener comandas
   const { data: comandas = [], isLoading: isLoadingComandas, error: comandasError } = useQuery({
@@ -130,7 +140,7 @@ export function CajaSection() {
 
   // Mutación para crear comanda
   const createComanda = useMutation({
-    mutationFn: async (comandaData: any) => {
+    mutationFn: async (comandaData: ComandaCreate) => {
       // Validar datos antes de enviar
       const errors = validateComandaData(comandaData);
       if (errors.length > 0) {
@@ -153,18 +163,13 @@ export function CajaSection() {
       });
     },
     onError: (error) => {
-      console.error('Error creando comanda:', error);
-      toast({
-        title: "🔴 Error",
-        description: error instanceof Error ? error.message : "No se pudo crear la comanda",
-        duration: 5000
-      });
+      handleApiError(error, 'crear comanda');
     }
   });
 
   // Mutación para procesar pago
   const processPayment = useMutation({
-    mutationFn: async ({ comandaId, paymentData }: { comandaId: string; paymentData: any }) => {
+    mutationFn: async ({ comandaId, paymentData }: { comandaId: string; paymentData: ComandaUpdate }) => {
       // Validar datos de pago
       const errors = validatePaymentData(paymentData);
       if (errors.length > 0) {
@@ -197,18 +202,13 @@ export function CajaSection() {
       });
     },
     onError: (error) => {
-      console.error('Error procesando pago:', error);
       setIsProcessingPayment(false);
-      toast({
-        title: "🔴 Error",
-        description: error instanceof Error ? error.message : "No se pudo procesar el pago",
-        duration: 5000
-      });
+      handleApiError(error, 'procesar pago');
     }
   });
 
   // Funciones de validación
-  const validateComandaData = (data: any): string[] => {
+  const validateComandaData = (data: ComandaCreate): string[] => {
     const errors: string[] = [];
     
     if (!data.usuario_id || typeof data.usuario_id !== 'number') {
@@ -234,7 +234,7 @@ export function CajaSection() {
     return errors;
   };
 
-  const validatePaymentData = (data: any): string[] => {
+  const validatePaymentData = (data: PaymentData): string[] => {
     const errors: string[] = [];
     
     if (!data.estado || !['pendiente', 'pagado', 'cancelado'].includes(data.estado)) {
@@ -294,11 +294,7 @@ export function CajaSection() {
     const errors = validatePaymentData(paymentData);
     if (errors.length > 0) {
       setValidationErrors(errors);
-      toast({
-        title: "🔴 Datos inválidos",
-        description: errors.join(', '),
-        duration: 5000
-      });
+      handleValidationError(errors);
       return;
     }
 

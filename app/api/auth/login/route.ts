@@ -7,6 +7,17 @@ const loginSchema = z.object({
   password: z.string().min(1, 'La contraseña es requerida')
 });
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    },
+  });
+}
+
 export async function POST(request: Request) {
   try {
     console.log("🔔 [API] Recibido POST en /api/auth/login");
@@ -19,7 +30,14 @@ export async function POST(request: Request) {
         success: false,
         message: "Datos inválidos",
         errors: parse.error.errors.map(e => e.message)
-      }, { status: 400 });
+      }, { 
+        status: 400,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      });
     }
     
     const { email, password } = parse.data;
@@ -38,7 +56,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: false, 
         message: "Credenciales inválidas"
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      });
     }
 
     // Obtener información del usuario desde la tabla usuarios
@@ -53,7 +78,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: false, 
         message: "Error obteniendo datos de usuario"
-      }, { status: 500 });
+      }, { 
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      });
     }
 
     // Verificar que el usuario esté activo
@@ -62,7 +94,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         success: false, 
         message: "Usuario deshabilitado" 
-      }, { status: 403 });
+      }, { 
+        status: 403,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+      });
     }
 
     console.log("🟢 [API] Login exitoso para:", sanitizedEmail);
@@ -75,6 +114,12 @@ export async function POST(request: Request) {
         email: sanitizedEmail,
         rol: userData.rol
       }
+    }, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
     });
 
   } catch (error) {
@@ -82,6 +127,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: false, 
       message: "Error interno del servidor"
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      }
+    });
   }
 }
