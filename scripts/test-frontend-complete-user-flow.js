@@ -210,7 +210,7 @@ async function testCompleteUserFlow() {
   console.log('4.1 Creando producto de prueba...');
   try {
     const productoData = {
-      nombre: "Producto Prueba Frontend",
+      nombre: `Producto Prueba Frontend ${Date.now()}`,
       precio: 2500,
       emoji: "🧪",
       activo: true
@@ -261,7 +261,7 @@ async function testCompleteUserFlow() {
   console.log('4.3 Creando evento de prueba...');
   try {
     const eventoData = {
-      nombre: "Evento Prueba Frontend",
+      nombre: `Evento Prueba Frontend ${Date.now()}`,
       descripcion: "Evento de prueba para frontend",
       fecha_inicio: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       fecha_fin: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
