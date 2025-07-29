@@ -1,40 +1,29 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-// GET - Obtener el evento activo actual
+// GET - Obtener eventos activos
 export async function GET() {
   try {
-    console.log("🔔 [API] Obteniendo evento activo...");
+    console.log("🔔 [API] Obteniendo eventos activos...");
     
-    const { data: evento, error } = await supabase
+    const { data: eventos, error } = await supabase
       .from('eventos')
       .select('*')
       .eq('activo', true)
-      .order('fecha_inicio', { ascending: false })
-      .limit(1)
-      .single();
+      .order('fecha_inicio', { ascending: false });
 
-    if (error && error.code !== 'PGRST116') {
-      console.error("🔴 [API] Error obteniendo evento activo:", error);
+    if (error) {
+      console.error("🔴 [API] Error obteniendo eventos activos:", error);
       return NextResponse.json({ 
         success: false, 
-        message: "Error al obtener evento activo" 
+        message: "Error al obtener eventos activos" 
       }, { status: 500 });
     }
 
-    if (!evento) {
-      console.log("🟡 [API] No hay evento activo en este momento");
-      return NextResponse.json({ 
-        success: true, 
-        evento: null,
-        message: "No hay evento activo en este momento" 
-      });
-    }
-
-    console.log("🟢 [API] Evento activo encontrado:", evento.nombre);
+    console.log(`🟢 [API] Eventos activos encontrados: ${eventos?.length || 0}`);
     return NextResponse.json({ 
       success: true, 
-      evento 
+      eventos: eventos || []
     });
   } catch (error) {
     console.error("🔴 [API] Error inesperado:", error);

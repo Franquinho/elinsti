@@ -12,7 +12,7 @@ const EventoCreateSchema = z.object({
   capacidad_maxima: z.number().positive("La capacidad debe ser un número positivo").optional(),
   precio_entrada: z.number().min(0, "El precio no puede ser negativo").optional(),
   ubicacion: z.string().optional(),
-  imagen_url: z.string().url("URL de imagen inválida").optional(),
+  imagen_url: z.string().url("URL de imagen inválida").nullable().optional(),
 }).refine((data) => {
   const fechaInicio = new Date(data.fecha_inicio);
   const fechaFin = new Date(data.fecha_fin);
@@ -31,7 +31,7 @@ const EventoUpdateSchema = z.object({
   capacidad_maxima: z.number().positive("La capacidad debe ser un número positivo").optional(),
   precio_entrada: z.number().min(0, "El precio no puede ser negativo").optional(),
   ubicacion: z.string().optional(),
-  imagen_url: z.string().url("URL de imagen inválida").optional(),
+  imagen_url: z.string().url("URL de imagen inválida").nullable().optional(),
   activo: z.boolean().optional(),
 }).refine((data) => {
   if (data.fecha_inicio && data.fecha_fin) {

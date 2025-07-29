@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 
-// PATCH - Actualizar un producto existente
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+// PUT - Actualizar un producto existente
+export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
     const id = params.id;
     const body = await request.json();
@@ -12,7 +12,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return NextResponse.json({ success: false, message: "ID de producto es requerido" }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('productos')
       .update({ nombre, precio, emoji, activo })
       .eq('id', id)
@@ -37,7 +37,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Verificar si el producto existe
-    const { data: productoExistente, error: checkError } = await supabaseAdmin
+    const { data: productoExistente, error: checkError } = await supabase
       .from('productos')
       .select('id, nombre, activo')
       .eq('id', id)
@@ -48,7 +48,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     // Verificar si el producto está siendo usado en comandas
-    const { data: comandasConProducto, error: comandasError } = await supabaseAdmin
+    const { data: comandasConProducto, error: comandasError } = await supabase
       .from('comanda_items')
       .select('comanda_id')
       .eq('producto_id', id)
@@ -64,7 +64,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     if (comandasConProducto && comandasConProducto.length > 0) {
       // El producto está siendo usado, solo marcarlo como inactivo
-      const { data, error } = await supabaseAdmin
+      const { data, error } = await supabase
         .from('productos')
         .update({ activo: false })
         .eq('id', id)
@@ -80,7 +80,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
       });
     } else {
       // El producto no está siendo usado, eliminarlo físicamente
-      const { error } = await supabaseAdmin.from('productos').delete().eq('id', id);
+      const { error } = await supabase.from('productos').delete().eq('id', id);
 
       if (error) throw error;
       
