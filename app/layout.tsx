@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "El INSTI - Sistema POS",
   description: "Sistema de punto de venta para El INSTI, espacio de música y eventos",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -22,18 +22,18 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
-        <QueryProvider>
-          <EventProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>
+            <EventProvider>
               {children}
-            </ThemeProvider>
-          </EventProvider>
-        </QueryProvider>
+            </EventProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

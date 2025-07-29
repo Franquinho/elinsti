@@ -8,7 +8,6 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Textarea } from './ui/textarea';
-import { Switch } from './ui/switch';
 import { 
   Plus, 
   Edit, 
@@ -36,20 +35,8 @@ interface Evento {
   ubicacion?: string;
   capacidad_maxima?: number;
   precio_entrada?: number;
-  estado: 'activo' | 'inactivo' | 'finalizado';
-  es_evento_activo: boolean;
-  fecha_creacion: string;
-}
-
-interface EventStats {
-  total_comandas: number;
-  total_ventas: number;
-  promedio_por_comanda: number;
-  productos_mas_vendidos: Array<{
-    nombre: string;
-    cantidad: number;
-    total: number;
-  }>;
+  activo: boolean;
+  created_at: string;
 }
 
 export function EventManagement() {
@@ -70,7 +57,7 @@ export function EventManagement() {
     ubicacion: '',
     capacidad_maxima: '',
     precio_entrada: '',
-    estado: 'activo' as const
+    activo: false
   });
 
   // Queries
@@ -84,18 +71,11 @@ export function EventManagement() {
     queryFn: api.eventos.getActive
   });
 
-  const { data: eventStats } = useQuery({
-    queryKey: ['event-stats'],
-    queryFn: () => api.eventos.getStats(),
-    enabled: !!eventos.length
-  });
-
   // Mutations
   const createEvent = useMutation({
     mutationFn: api.eventos.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['eventos'] });
-      queryClient.invalidateQueries({ queryKey: ['event-stats'] });
       setIsCreateDialogOpen(false);
       resetForm();
       toast({
@@ -119,7 +99,6 @@ export function EventManagement() {
       api.eventos.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['eventos'] });
-      queryClient.invalidateQueries({ queryKey: ['event-stats'] });
       setIsEditDialogOpen(false);
       setSelectedEvent(null);
       resetForm();
@@ -143,7 +122,6 @@ export function EventManagement() {
     mutationFn: api.eventos.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['eventos'] });
-      queryClient.invalidateQueries({ queryKey: ['event-stats'] });
       setIsDeleting(false);
       toast({
         title: "🟢 Evento eliminado",
@@ -192,7 +170,7 @@ export function EventManagement() {
       ubicacion: '',
       capacidad_maxima: '',
       precio_entrada: '',
-      estado: 'activo'
+      activo: false
     });
   };
 
@@ -228,13 +206,13 @@ export function EventManagement() {
       ubicacion: evento.ubicacion || '',
       capacidad_maxima: evento.capacidad_maxima?.toString() || '',
       precio_entrada: evento.precio_entrada?.toString() || '',
-      estado: evento.estado
+      activo: evento.activo
     });
     setIsEditDialogOpen(true);
   };
 
   const handleDeleteEvent = (evento: Evento) => {
-    if (evento.es_evento_activo) {
+    if (evento.activo) {
       toast({
         title: "🔴 Error",
         description: "No se puede eliminar el evento activo",
@@ -251,21 +229,11 @@ export function EventManagement() {
     setActiveEvent.mutate(evento.id);
   };
 
-  const getStatusBadge = (estado: string, esActivo: boolean) => {
-    if (esActivo) {
+  const getStatusBadge = (activo: boolean) => {
+    if (activo) {
       return <Badge variant="default" className="bg-green-500 hover:bg-green-600">Activo</Badge>;
     }
-    
-    switch (estado) {
-      case 'activo':
-        return <Badge variant="secondary">Disponible</Badge>;
-      case 'inactivo':
-        return <Badge variant="outline">Inactivo</Badge>;
-      case 'finalizado':
-        return <Badge variant="destructive">Finalizado</Badge>;
-      default:
-        return <Badge variant="outline">{estado}</Badge>;
-    }
+    return <Badge variant="outline">Inactivo</Badge>;
   };
 
   const formatDate = (dateString: string) => {
@@ -311,16 +279,15 @@ export function EventManagement() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="estado">Estado</Label>
+                  <Label htmlFor="activo">Estado</Label>
                   <select
-                    id="estado"
-                    value={formData.estado}
-                    onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
+                    id="activo"
+                    value={formData.activo.toString()}
+                    onChange={(e) => setFormData({ ...formData, activo: e.target.value === 'true' })}
                     className="w-full p-2 border rounded-md"
                   >
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                    <option value="finalizado">Finalizado</option>
+                    <option value="false">Inactivo</option>
+                    <option value="true">Activo</option>
                   </select>
                 </div>
               </div>
@@ -357,14 +324,14 @@ export function EventManagement() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="ubicacion">Ubicación</Label>
                   <Input
                     id="ubicacion"
                     value={formData.ubicacion}
                     onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                    placeholder="Ej: Salón Principal"
+                    placeholder="Ubicación del evento"
                   />
                 </div>
                 <div>
@@ -377,17 +344,18 @@ export function EventManagement() {
                     placeholder="Ej: 100"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="precio_entrada">Precio de Entrada</Label>
-                  <Input
-                    id="precio_entrada"
-                    type="number"
-                    step="0.01"
-                    value={formData.precio_entrada}
-                    onChange={(e) => setFormData({ ...formData, precio_entrada: e.target.value })}
-                    placeholder="Ej: 25.00"
-                  />
-                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="precio_entrada">Precio de Entrada</Label>
+                <Input
+                  id="precio_entrada"
+                  type="number"
+                  step="0.01"
+                  value={formData.precio_entrada}
+                  onChange={(e) => setFormData({ ...formData, precio_entrada: e.target.value })}
+                  placeholder="Ej: 25.00"
+                />
               </div>
 
               <div className="flex gap-2 pt-4">
@@ -441,51 +409,6 @@ export function EventManagement() {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Estadísticas */}
-      {eventStats && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Comandas</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{eventStats.total_comandas}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Ventas</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${eventStats.total_ventas.toFixed(2)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Promedio por Comanda</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${eventStats.promedio_por_comanda.toFixed(2)}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Productos Más Vendidos</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{eventStats.productos_mas_vendidos.length}</div>
-            </CardContent>
-          </Card>
-        </div>
       )}
 
       {/* Lista de Eventos */}
@@ -546,7 +469,9 @@ export function EventManagement() {
                         <span className="text-muted-foreground text-sm">No especificada</span>
                       )}
                     </TableCell>
-                    <TableCell>{getStatusBadge(evento.estado, evento.es_evento_activo)}</TableCell>
+                    <TableCell>
+                      {getStatusBadge(evento.activo)}
+                    </TableCell>
                     <TableCell>
                       {evento.capacidad_maxima ? (
                         <div className="flex items-center gap-1 text-sm">
@@ -561,7 +486,7 @@ export function EventManagement() {
                       {evento.precio_entrada ? (
                         <div className="flex items-center gap-1 text-sm">
                           <DollarSign className="h-3 w-3" />
-                          ${evento.precio_entrada.toFixed(2)}
+                          ${evento.precio_entrada}
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">Gratis</span>
@@ -569,7 +494,7 @@ export function EventManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {!evento.es_evento_activo && (
+                        {!evento.activo && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -590,7 +515,7 @@ export function EventManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteEvent(evento)}
-                          disabled={isDeleting || evento.es_evento_activo}
+                          disabled={isDeleting || evento.activo}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -622,16 +547,15 @@ export function EventManagement() {
                 />
               </div>
               <div>
-                <Label htmlFor="edit-estado">Estado</Label>
+                <Label htmlFor="edit-activo">Estado</Label>
                 <select
-                  id="edit-estado"
-                  value={formData.estado}
-                  onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
+                  id="edit-activo"
+                  value={formData.activo.toString()}
+                  onChange={(e) => setFormData({ ...formData, activo: e.target.value === 'true' })}
                   className="w-full p-2 border rounded-md"
                 >
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo</option>
-                  <option value="finalizado">Finalizado</option>
+                  <option value="false">Inactivo</option>
+                  <option value="true">Activo</option>
                 </select>
               </div>
             </div>
@@ -668,14 +592,14 @@ export function EventManagement() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-ubicacion">Ubicación</Label>
                 <Input
                   id="edit-ubicacion"
                   value={formData.ubicacion}
                   onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                  placeholder="Ej: Salón Principal"
+                  placeholder="Ubicación del evento"
                 />
               </div>
               <div>
@@ -688,17 +612,18 @@ export function EventManagement() {
                   placeholder="Ej: 100"
                 />
               </div>
-              <div>
-                <Label htmlFor="edit-precio_entrada">Precio de Entrada</Label>
-                <Input
-                  id="edit-precio_entrada"
-                  type="number"
-                  step="0.01"
-                  value={formData.precio_entrada}
-                  onChange={(e) => setFormData({ ...formData, precio_entrada: e.target.value })}
-                  placeholder="Ej: 25.00"
-                />
-              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="edit-precio_entrada">Precio de Entrada</Label>
+              <Input
+                id="edit-precio_entrada"
+                type="number"
+                step="0.01"
+                value={formData.precio_entrada}
+                onChange={(e) => setFormData({ ...formData, precio_entrada: e.target.value })}
+                placeholder="Ej: 25.00"
+              />
             </div>
 
             <div className="flex gap-2 pt-4">

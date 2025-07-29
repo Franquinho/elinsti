@@ -80,14 +80,13 @@ export async function POST(request: Request) {
     const eventoData = {
       nombre: nombre.trim(),
       descripcion: descripcion?.trim() || null,
-      fecha: fecha_inicio, // Columna obligatoria
       fecha_inicio: fecha_inicio,
       fecha_fin: fecha_fin,
       capacidad_maxima: capacidad_maxima || null,
       precio_entrada: precio_entrada || 0,
       ubicacion: ubicacion?.trim() || null,
       imagen_url: imagen_url?.trim() || null,
-      activo: true
+      activo: false // Por defecto inactivo
     };
 
     console.log("🔔 [API] Datos del evento a insertar:", eventoData);
@@ -111,6 +110,87 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("🔴 [API] Error al crear evento:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: "Error interno del servidor" 
+    }, { status: 500 });
+  }
+}
+
+// PUT - Actualizar un evento
+export async function PUT(request: Request) {
+  try {
+    const { id, ...updateData } = await request.json();
+    
+    if (!id) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "ID del evento es requerido" 
+      }, { status: 400 });
+    }
+
+    console.log("🔔 [API] Actualizando evento:", id);
+
+    const { data, error } = await supabase
+      .from('eventos')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("🔴 [API] Error actualizando evento:", error);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al actualizar evento" 
+      }, { status: 500 });
+    }
+
+    console.log("🟢 [API] Evento actualizado:", data.nombre);
+    return NextResponse.json({ success: true, evento: data });
+
+  } catch (error: any) {
+    console.error("🔴 [API] Error al actualizar evento:", error);
+    return NextResponse.json({ 
+      success: false, 
+      message: "Error interno del servidor" 
+    }, { status: 500 });
+  }
+}
+
+// DELETE - Eliminar un evento
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ 
+        success: false, 
+        message: "ID del evento es requerido" 
+      }, { status: 400 });
+    }
+
+    console.log("🔔 [API] Eliminando evento:", id);
+
+    const { error } = await supabase
+      .from('eventos')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("🔴 [API] Error eliminando evento:", error);
+      return NextResponse.json({ 
+        success: false, 
+        message: "Error al eliminar evento" 
+      }, { status: 500 });
+    }
+
+    console.log("🟢 [API] Evento eliminado:", id);
+    return NextResponse.json({ success: true });
+
+  } catch (error: any) {
+    console.error("🔴 [API] Error al eliminar evento:", error);
     return NextResponse.json({ 
       success: false, 
       message: "Error interno del servidor" 

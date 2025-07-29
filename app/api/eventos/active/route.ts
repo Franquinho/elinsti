@@ -6,14 +6,10 @@ export async function GET() {
   try {
     console.log("🔔 [API] Obteniendo evento activo...");
     
-    const now = new Date().toISOString();
-    
     const { data: evento, error } = await supabase
       .from('eventos')
       .select('*')
       .eq('activo', true)
-      .lte('fecha_inicio', now)
-      .gte('fecha_fin', now)
       .order('fecha_inicio', { ascending: false })
       .limit(1)
       .single();

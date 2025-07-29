@@ -1,14 +1,22 @@
 "use client"
 
-import type React from "react"
-
-import { useAuth } from "@/lib/auth"
-import { Button } from "@/components/ui/button"
-import { LogOut, Wifi, WifiOff, Music, Moon, Sun } from "lucide-react"
 import { useState, useEffect } from "react"
+import { useAuth } from "@/lib/auth"
 import { offlineStorage } from "@/lib/offline-storage"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { 
+  Music, 
+  Wifi, 
+  WifiOff, 
+  LogOut, 
+  RefreshCw,
+  AlertCircle
+} from "lucide-react"
 import Image from "next/image"
-import EventSelector from "@/components/event-selector";
+import EventSelector from "./event-selector"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -19,7 +27,6 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const { user, logout } = useAuth()
   const [isOnline, setIsOnline] = useState(true)
   const [hasOfflineData, setHasOfflineData] = useState(false)
-  const [darkMode, setDarkMode] = useState(false)
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true)
@@ -57,19 +64,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
   }
 
   return (
-    <div
-      className={`min-h-screen transition-all duration-500 ${
-        darkMode
-          ? "bg-gradient-to-br from-gray-900 via-purple-900 to-pink-900"
-          : "bg-gradient-to-br from-pink-50 via-orange-50 to-yellow-50"
-      }`}
-    >
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header
-        className={`backdrop-blur border-b sticky top-0 z-50 shadow-sm transition-all duration-500 ${
-          darkMode ? "bg-gray-900/95 border-purple-800" : "bg-white/95 border-pink-200"
-        }`}
-      >
+      <header className="backdrop-blur border-b sticky top-0 z-50 shadow-sm bg-background/95 border-border">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -82,7 +79,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 </h1>
                 <div className="flex items-center gap-2">
                   <Music className="w-3 h-3 text-pink-500" />
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     {user?.nombre} - {user?.rol}
                   </p>
                 </div>
@@ -93,19 +90,11 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
               {/* Indicador de conexión */}
               <div className="flex items-center gap-2">
                 {isOnline ? <Wifi className="w-4 h-4 text-green-600" /> : <WifiOff className="w-4 h-4 text-red-600" />}
-                <span className="text-xs text-gray-600">{isOnline ? "En línea" : "Sin conexión"}</span>
+                <span className="text-xs text-muted-foreground">{isOnline ? "En línea" : "Sin conexión"}</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDarkMode(!darkMode)}
-                  className="text-pink-600 hover:text-pink-700 hover:bg-pink-50"
-                >
-                  {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-                </Button>
-              </div>
+              {/* Theme Switcher */}
+              <ThemeSwitcher />
 
               {/* Botón de sincronización */}
               {hasOfflineData && (
@@ -113,8 +102,9 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                   size="sm"
                   variant="outline"
                   onClick={syncOfflineData}
-                  className="text-xs border-orange-200 text-orange-600 hover:bg-orange-50"
+                  className="text-xs border-orange-200 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
                 >
+                  <RefreshCw className="w-3 h-3 mr-1" />
                   Sincronizar
                 </Button>
               )}
@@ -123,7 +113,7 @@ export function DashboardLayout({ children, title }: DashboardLayoutProps) {
                 variant="ghost"
                 size="sm"
                 onClick={logout}
-                className="text-pink-600 hover:text-pink-700 hover:bg-pink-50"
+                className="text-pink-600 hover:text-pink-700 hover:bg-pink-50 dark:text-pink-400 dark:hover:text-pink-300 dark:hover:bg-pink-950"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Salir
