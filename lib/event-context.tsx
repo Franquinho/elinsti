@@ -109,7 +109,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ evento_id: eventoId }),
+        body: JSON.stringify({ eventoId: eventoId }),
       });
       
       const data = await response.json();

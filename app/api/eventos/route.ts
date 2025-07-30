@@ -100,7 +100,7 @@ export async function POST(request: Request) {
     const eventoData = {
       nombre: nombre.trim(),
       descripcion: descripcion?.trim() || null,
-      fecha: fecha_inicio, // Usar fecha_inicio como fecha principal
+      fecha: fecha_inicio, // Campo obligatorio en Supabase
       fecha_inicio: fecha_inicio,
       fecha_fin: fecha_fin,
       capacidad_maxima: capacidad_maxima || null,

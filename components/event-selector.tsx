@@ -1,17 +1,24 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useEventContext } from '@/lib/event-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, RefreshCw } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const EventSelector: React.FC = () => {
   const { eventoActivo, eventos, loading, cambiarEventoActivo, refreshEventos } = useEventContext();
+  const [isChanging, setIsChanging] = useState(false);
 
   const handleEventChange = async (eventoId: string) => {
-    await cambiarEventoActivo(parseInt(eventoId));
+    setIsChanging(true);
+    try {
+      await cambiarEventoActivo(parseInt(eventoId));
+    } finally {
+      setIsChanging(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -38,10 +45,7 @@ const EventSelector: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="animate-pulse">
-            <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-            <div className="h-3 bg-muted rounded w-1/2"></div>
-          </div>
+          <LoadingSpinner text="Cargando eventos..." />
         </CardContent>
       </Card>
     );
@@ -94,17 +98,25 @@ const EventSelector: React.FC = () => {
                 <label className="text-sm font-medium text-muted-foreground">
                   Cambiar evento:
                 </label>
-                <select
-                  value={eventoActivo.id}
-                  onChange={(e) => handleEventChange(e.target.value)}
-                  className="mt-1 w-full p-2 text-sm border rounded-md bg-background text-foreground"
-                >
-                  {eventos.map((evento) => (
-                    <option key={evento.id} value={evento.id}>
-                      {evento.nombre}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={eventoActivo.id}
+                    onChange={(e) => handleEventChange(e.target.value)}
+                    disabled={isChanging}
+                    className="mt-1 w-full p-2 text-sm border rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {eventos.map((evento) => (
+                      <option key={evento.id} value={evento.id}>
+                        {evento.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {isChanging && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <LoadingSpinner size="sm" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -118,7 +130,8 @@ const EventSelector: React.FC = () => {
                 </label>
                 <select
                   onChange={(e) => handleEventChange(e.target.value)}
-                  className="mt-1 w-full p-2 text-sm border rounded-md bg-background text-foreground"
+                  disabled={isChanging}
+                  className="mt-1 w-full p-2 text-sm border rounded-md bg-background text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">Seleccionar...</option>
                   {eventos.map((evento) => (

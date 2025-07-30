@@ -101,14 +101,27 @@ class ApiClient {
     })
   }
 
+  async updateEvento(id: number, eventoData: Partial<EventoCreate>) {
+    return this.request("eventos", {
+      method: "PUT",
+      body: JSON.stringify({ id, ...eventoData }),
+    })
+  }
+
+  async deleteEvento(id: number) {
+    return this.request(`eventos?id=${id}`, {
+      method: "DELETE",
+    })
+  }
+
   async getEventoActivo() {
     return this.request("eventos/active")
   }
 
   async setEventoActivo(eventoId: number) {
     return this.request("eventos/active", {
-      method: "POST",
-      body: JSON.stringify({ evento_id: eventoId }),
+      method: "PUT",
+      body: JSON.stringify({ eventoId: eventoId }),
     })
   }
 
@@ -143,5 +156,34 @@ class ApiClient {
 
 export const apiClient = new ApiClient()
 
-// Alias para compatibilidad
-export const api = apiClient
+// API estructurada para mejor organización
+export const api = {
+  auth: {
+    login: (email: string, password: string) => apiClient.login(email, password),
+  },
+  productos: {
+    list: () => apiClient.getProductos(),
+    listAdmin: () => apiClient.getProductosAdmin(),
+    create: (data: ProductoCreate) => apiClient.createProducto(data),
+    update: (id: number, data: ProductoUpdate) => apiClient.updateProducto(id, data),
+    delete: (id: number) => apiClient.deleteProducto(id),
+  },
+  eventos: {
+    list: () => apiClient.getEventos(),
+    create: (data: EventoCreate) => apiClient.createEvento(data),
+    update: (id: number, data: Partial<EventoCreate>) => apiClient.updateEvento(id, data),
+    delete: (id: number) => apiClient.deleteEvento(id),
+    getActive: () => apiClient.getEventoActivo(),
+    setActive: (eventoId: number) => apiClient.setEventoActivo(eventoId),
+    stats: () => apiClient.getEventosStats(),
+  },
+  comandas: {
+    create: (data: ComandaCreate) => apiClient.createComanda(data),
+    list: () => apiClient.getComandas(),
+    updateStatus: (comanda_id: number, estado: string, metodo_pago?: string, nota?: string) => 
+      apiClient.updateComandaStatus(comanda_id, estado, metodo_pago, nota),
+  },
+  stats: {
+    general: () => apiClient.getStats(),
+  },
+}

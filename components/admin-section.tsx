@@ -122,25 +122,32 @@ export function AdminSection() {
 
   const toggleProductoActivo = async (id: number) => {
     const producto = productos.find((p) => p.id === id)
-    if (!producto) return;
+    if (!producto) {
+      toast({ 
+        title: "❌ Error", 
+        description: "Producto no encontrado", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
     try {
       const productoActualizado = { ...producto, activo: !producto.activo }
       const res = await apiClient.updateProducto(id, { activo: productoActualizado.activo });
-      if (res.success) {
+      if (res?.success) {
         setProductos(productos.map((p) => (p.id === id ? res.producto : p)));
         toast({ 
-          title: "Éxito", 
+          title: "✅ Éxito", 
           description: `Producto ${producto.activo ? 'desactivado' : 'activado'} correctamente.` 
         });
       } else {
-        throw new Error(res.message);
+        throw new Error(res?.message || 'Error al actualizar producto');
       }
     } catch (error: unknown) {
       console.error("Error actualizando producto:", error)
       toast({ 
-        title: "Error", 
-        description: `No se pudo actualizar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
+        title: "❌ Error", 
+        description: error instanceof Error ? error.message : 'No se pudo actualizar el producto', 
         variant: "destructive" 
       });
     }
@@ -196,8 +203,8 @@ export function AdminSection() {
         }
       }
 
-      if (!res.success) {
-        throw new Error(res.message);
+      if (!res || !res.success) {
+        throw new Error(res?.message || 'Error en la operación');
       }
     } catch (error: unknown) {
       console.error(`Error en ${action} producto:`, error);

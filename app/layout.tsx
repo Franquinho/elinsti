@@ -4,7 +4,8 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { QueryProvider } from "@/components/query-provider"
-import { EventProvider } from "@/lib/event-context";
+import { EventProvider } from "@/lib/event-context"
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -28,11 +29,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <EventProvider>
-              {children}
-            </EventProvider>
-          </QueryProvider>
+          <ErrorBoundary>
+            <QueryProvider>
+              <EventProvider>
+                {children}
+              </EventProvider>
+            </QueryProvider>
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>
